@@ -1,0 +1,444 @@
+\documentclass[40pt,letterpaper,physrev]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{float}
+\usepackage{graphicx}
+\usepackage{graphics}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{cancel}
+\usepackage{times} % set times font
+\usepackage{color}
+\usepackage{datetime}
+\usepackage{fullpage}
+\DeclareGraphicsExtensions{.pdf,.png,.jpg,.eps} 
+\author{Dmitri Priimak}
+\title{Boltzmann equation in 2D SSL with cross magnetic and electric fields}
+\begin{document}
+ \begin{center}
+  \underline{Boltzmann equation in 2D SSL with cross magnetic and electric fields}
+ \end{center}
+  \begin{center}
+    \underline{Rev. 7}
+  \end{center}
+  \section{Analytical treatment}
+  A semiconductor super-lattice (SSL) is a very promising system plagued since its interception by Esaki and Tsu.
+  
+  We start from following Boltzmann equation
+    \begin{equation}\label{eq:boltzmann}
+     \frac{\partial f}{\partial t}+
+     \frac{e}{\hbar}\left ( \mathbf{E} + \mathbf{v}\times\mathbf{B} \right ) \frac{\partial f}{\partial\mathbf{k}}+
+     \mathbf{v}(\mathbf{k})\frac{\partial f}{\partial r} = \left ( \frac{\partial f}{\partial t} \right )_{st}
+    \end{equation}
+    We consider case when $f(...)$ is spatially homogeneous, i.e. it depends only on $\mathbf{k}$, then
+    \begin{equation}\label{eq:boltzmann_homo}
+     \frac{\partial f}{\partial t}+
+     \frac{e}{\hbar}\left ( \mathbf{E} + \mathbf{v}\times\mathbf{B} \right ) \frac{\partial f}{\partial\mathbf{k}}
+     = \frac{f_0 - f}{\tau}
+    \end{equation}
+    Electric field is along x-axis and magnetic field is along z-axis.
+    \begin{align}
+     \mathbf{E}=&(E,0,0) \\
+     \mathbf{B}=&(0,0,B) \\
+     \mathbf{v}\times\mathbf{B}=&(v_y B, -v_x B, 0))
+    \end{align}
+    And will make following substitution
+    \begin{equation}
+     t \to \tau t
+    \end{equation}
+    which gives following form to the Boltzmann equation
+    \begin{equation}
+     \frac{\partial f}{\partial t}+
+     \frac{ed\tau}{\hbar}(E+v_{y}B)\frac{\partial f}{\partial(k_x d)}-
+     \frac{ed\tau}{\hbar}v_{x}B\frac{\partial f}{\partial(k_y d)}
+     = f_0 - f
+    \end{equation}
+    where 
+    \begin{equation}
+     \mathbf{v}=\frac{1}{\hbar}\frac{\partial\varepsilon}{\partial\mathbf{k}}
+    \end{equation}
+    and $\varepsilon$ is an energy of an electron in the zone, which in tight-binding apporiximation takes form in the first zone
+    \begin{equation}
+     \varepsilon=\frac{\hbar^2k^2_y}{2m}-\frac{\Delta_{1}}{2}\cos(k_{x}d)\label{eq:energy_unscaled}
+    \end{equation}
+    therefore
+    \begin{align}
+     v_x=&\frac{\Delta_{1}d}{2\hbar}\sin(dp_x/h) \\
+     v_y=&\frac{\hbar k_y}{m}
+    \end{align}
+    And Boltzmann equations now takes following form
+   \begin{equation}
+     \frac{\partial f}{\partial t}+
+     \left ( \frac{ed\tau}{\hbar}E+\frac{ed\tau}{m}k_yB \right ) \frac{\partial f}{\partial(k_x d)}-
+     \frac{\Delta_{1}ed^2\tau}{2\hbar^2}B\sin(k_{x}d)\frac{\partial f}{\partial(k_y d)}
+     = f_0 - f
+   \end{equation}
+   Now we can define
+   \begin{align}
+	E_*=&\frac{\hbar}{ed\tau} \\	
+	m_x=&\frac{2\hbar^2}{\Delta_1 d^2} \\
+   \end{align}
+   \begin{equation}
+	\boxed{\alpha=m/m_x}
+   \end{equation}
+   Then, with cyclotron frequency defined as 
+   \begin{equation}
+	\omega_c=\frac{eB}{\sqrt{mm_x}}
+   \end{equation}
+   we get following
+   \begin{equation}
+     \frac{\partial f}{\partial t}+
+     \left ( \frac{E}{E_*}+\frac{\omega_{c}\tau}{\sqrt{\alpha}}k_yd \right ) \frac{\partial f}{\partial(k_x d)}-
+     \sqrt{\alpha}\omega_c\tau\sin(k_x d)\frac{\partial f}{\partial(k_y d)}
+     = f_0 - f
+   \end{equation}
+   And if we know define
+   \begin{align}
+       \phi_x=&k_{x}d \\
+       \phi_y=&\frac{k_{y}d}{\sqrt{\alpha}} \\
+       \tilde{E}=&E/E_*\\
+       \tilde{B}=&\omega_{c}\tau
+   \end{align}
+   Boltzmann equations takes form
+   \begin{equation}
+   	\boxed{
+   	\label{eq:boltzmann_final}
+     \frac{\partial f}{\partial t}+
+     \left ( \tilde{E}+\tilde{B}\phi_y\right ) \frac{\partial f}{\partial\phi_x}-
+     \tilde{B}\sin(\phi_x)\frac{\partial f}{\partial\phi_y}
+     = f_0 - f}
+   \end{equation}
+   Alternatively, if we define Bloch frequency as
+   \begin{equation}
+	\omega_B=\frac{edE}{\hbar}
+   \end{equation}
+   it can be written as 
+   \begin{equation}
+     \frac{\partial f}{\partial t}+
+     \left ( \omega_B\tau+\omega_c\tau\phi_y\right ) \frac{\partial f}{\partial\phi_x}-
+     \omega_c\tau\sin(\phi_x)\frac{\partial f}{\partial\phi_y}
+     = f_0 - f
+   \end{equation} 
+    Ratio of Bloch and cyclotron oscillation frequencies will be important to us down the road.
+    For $f_0$ we use Boltzmann distribution 
+    \begin{equation}
+        f_0\propto e^{\displaystyle -\frac{\varepsilon}{k_bT}}
+    \end{equation}
+    which in our variables $\phi_x$ and $\phi_y$ takes form
+    \begin{equation}
+	f_0=C\exp{\left \{ \mu\cos(\phi_x)-\frac{\mu}{2}\phi^2_y\right \} }
+	\end{equation}
+	\begin{equation}
+	\boxed{\mu=\frac{\Delta_1}{2k_{b}T}}
+    \end{equation} 
+    Now, constant $C$ must be such that dimensionless norm of $f_0$ is 1. Therefore
+    \begin{align}
+       \frac{1}{C}=&\frac{d^2}
+	{\hbar^2}\int^{+\infty}_{-\infty}\text{d}p_y\int_{p_x\in\text{BZ}}\text{d}p_x
+	\exp{\left \{ \mu\cos(\phi_x)-\frac{\mu}{2}\phi^2_y\right \} } \\
+	   =&\sqrt{\alpha}\int^{+\infty}_{-\infty}e^{-\mu\phi^2_y/2}\text{d}\phi_y
+	   \int^{\pi}_{-\pi}e^{\mu\cos(\phi_x)}\text{d}\phi_x \\
+	   =&2\pi I_0(\mu)\sqrt{\frac{2\pi\alpha}{\mu}}
+    \end{align}
+    Thus full form of equilibrium distribution is
+    \begin{equation}
+    \boxed{
+	f_0=\frac{1}{2\pi I_0(\mu)}\sqrt{\frac{\mu}{2\pi\alpha}}\exp{\left \{ \mu\cos(\phi_x)-\frac{\mu}{2}\phi^2_y\right \} } }
+	\end{equation}
+	This way, in total, we have four free parameters defining our system, $\mu$ and $\alpha$ that characterize lattice parameters such as lattice period and band width and temperature, and $\tilde{E}$, $\tilde{B}$ that specify external fields.
+	One of the parameters that we will be calculating is drift 
+	velocity $v_{dr}$, which we will define like this
+	\begin{align}
+		v_{dr}=&\frac{2d}{\Delta_1\hbar}\iint
+			\frac{\partial\varepsilon}{\partial p_x}f(p_x,p_y)\text{d}p_x\text{d}p_y \\
+			=&\sqrt{\alpha}\int^{\pi}_{-\pi}\text{d}\phi_x\int^{+\infty}_{-\infty}\text{d}\phi_y\sin(\phi_x)f(\phi_x,\phi_y)\label{eq:v_dr_generic}
+	\end{align}
+    When magentic field is $0$ and $E$ is constant, i.e. $E_{dc}$, analytic 
+    solution Boltzmann equation is well known and as well as expression for 
+    drift velocity
+    \begin{align}
+	v_{dr}=&\left \{ \sqrt{\alpha}\int^{\pi}_{-\pi}\text{d}\phi_x\int^{+\infty}_{-\infty}\text{d}\phi_y\sin(\phi_x)f_0(\phi_x,\phi_y)\right \}
+	\frac{E_{dc}/E_*}{1+(E_{dc}/E_*)^2} \\
+	=&\frac{I_1(\mu)}{I_0(\mu)}\frac{E_{dc}/E_*}{1+(E_{dc}/E_*)^2}
+    \end{align}
+	From which follows that peak value of $v_{dr}$ is at $E_{dc}/E_*=1$ and is 
+	\begin{equation}
+		v_p=\frac{I_1(\mu)}{2I_0(\mu)}\label{eq:v_peak}
+	\end{equation}
+	Later, down the road, we will be plotting not $v_{dr}$, but $v_{dr}/v_p$,
+	which for dc electric field only take very simple form, known as "Esaki-Tsu" equation
+	\begin{equation}
+		\frac{v_{dr}}{v_p}=2\frac{E_{dc}/E_*}{1+(E_{dc}/E_*)^2}
+	\end{equation}
+	In general we will be applying a/c emf in the form 
+	\begin{equation}
+	\tilde{E}=\tilde{E}_{dc}+\tilde{E}_{\omega}\cos(\omega t)
+	\end{equation}
+	and in case when magnetic field is not applied we also have analitic expression for $v_{dr}$, which is known as "Tien-Gordon" equation. Analytic expression, "Taker formulae", is also known for absorption, which we will define like this
+	\begin{equation}
+	A=\left <\frac{v_{dr}}{v_p}\cos(\omega t) \right >_{t}
+	\end{equation}
+	In case when magnetic field is appied, however, analytic expression for absorption is not known. And that is the quantity we are most interested in.
+	
+	Now due to periodicty of $f(\phi_x,\phi_y)$ along $\phi_x$ with 
+	period $2\pi$ and additionally 
+	$f_0(-\phi_x, \phi_y)=f_0(\phi_x, \phi_y)$, it makes sense 
+	for us to expand $f$ and $f_0$ into Fourier series.
+	\begin{align}
+		f_0=&\sum^\infty_{n=0}a^{(0)}_{n}\text{cos}(n\phi_x)\label{eq:f0_fourier_representation} \\
+		f=&\sum^\infty_{n=0}a_{n}\text{cos}(n\phi_x)+
+		b_{n}\text{sin}(n\phi_x)\label{eq:f_fourier_representation}
+	\end{align}
+	where coeffients $a^{(0)}_n$, $a_n$ and $b_n$ in general will depend on $\phi_y$ and last two also on time $t$. Note, that $a_{n<0}\equiv 0$ and $b_{n<1}\equiv 0$. And with the from of $f_0$, as selected above, $a^{(0)}_n$ becomes
+	\begin{align}
+		a^{(0)}_n=&\frac{\sigma(n)}{\pi}\int^{\pi}_{-\pi}f_0(\phi_x,\phi_y)\cos(n\phi_x)\text{d}\phi_x \\
+		=&\frac{\sigma(n)I_n(\mu)}{\pi I_0(\mu)}\sqrt{\frac{\mu}{2\pi\alpha}}\exp{\left \{ -\frac{\mu}{2}\phi^2_y\right \} }
+	\end{align}
+	where 
+	\begin{equation}
+		\sigma(n)=
+		\begin{cases}
+   		1/2 & : n=0 \\
+   		1 & : n\ne 1
+  		\end{cases}
+	\end{equation}
+	Norm of $f(\phi_x,\phi_y)$ must always be one, i.e.
+	\begin{equation}
+		\sqrt{\alpha}\int^{\pi}_{-\pi}\text{d}\phi_x
+			\int^{+\infty}_{-\infty}\text{d}\phi_y f(\phi_x,\phi_y)=1
+	\end{equation}
+	which in fourier representation takes form
+	\begin{equation}
+	\boxed{
+		2\pi\sqrt{\alpha}\int^{+\infty}_{-\infty}a_0(\phi_y)\text{d}
+		\phi_y=1}
+	\end{equation}
+	Once we move on to the numerical calculations this equation can be used to check correctness. And from equation (\ref{eq:v_dr_generic}) it is clear that only $b_1$ will survice. And calculation of $v_{dr}$ is done through following 
+	equation
+	\begin{align}
+		v_{dr}=&\sqrt{\alpha}\int^{+\infty}_{-\infty}\text{d}\phi_{y}\int^{+\pi}_{-\pi}\text{d}\phi_x\sin(\phi_x)b_1(\phi_y)\sin(\phi_y)\\
+		=&\pi\sqrt{\alpha}\int^{+\infty}_{-\infty}b_1(\phi_y)\text{d}\phi_y
+	\end{align}
+	and in view of definition of peak value of $v_{dr}$ in eq. (\ref{eq:v_peak})
+	\begin{equation}
+	\boxed{
+		\frac{v_{dr}}{v_p}=\frac{2I_0(\mu)\pi\sqrt{\alpha}}{I_1(\mu)}
+			\int^{+\infty}_{-\infty}b_1(\phi_y)\text{d}\phi_y
+			}
+	\end{equation}
+	In addition to drift velocity along $x$-axis we can look at drift velocity alogn $y$-axis, which we will define like this
+	\begin{align}
+	v_y=&\frac{2}{\Delta_1}\iint\frac{\partial\varepsilon}{\partial p_y}f(\phi_x,\phi_y)\text{d}p_x\text{d}p_y \\
+	=&\int^{\pi}_{-\pi}\text{d}\phi_x\int^{+\infty}_{-\infty} \phi_y f(\phi_x,\phi_y) \text{d}\phi_y \\
+	=&2\pi\int^{+\infty}_{-\infty}a_0(\phi_y)\phi_y\text{d}\phi_y
+	\end{align}
+	However just as with drift velocity along $x$-axis we will be working with ratio of $v_y$ and peak velocity $v_p$.
+	\begin{equation}
+	\boxed{
+	\frac{v_y}{v_p}=\frac{4\pi I_0(\mu)}{I_1(\mu)}\int^{+\infty}_{-\infty}a_0(\phi_y)\phi_y\text{d}\phi_y
+	}
+	\end{equation}
+	This way we accounted for meaning of $a_0$ and $b_1$. Let us now take a look at $a_1$. Effective mass of an electron in the $x$ direction is given by 
+	\begin{equation}
+		m^{-1}_{x,\mathbf{k}}=\frac{1}{\hbar^2}\frac{\partial^2\varepsilon}{\partial k^2_x}
+	\end{equation}
+	We will be working however with ratio of electron mass to $m_{x,\mathbf{k}}$. And in our approximation of energy (\ref{eq:energy_unscaled}) that takes form
+	\begin{align}
+	\frac{m}{m_{x,\mathbf{k}}}=&\frac{\Delta_1 d^2m}{2\hbar^2}\cos(k_xd) \\
+	=&\alpha\cos(\phi_x)
+	\end{align}
+	To gather back this value from $f(\phi_x,\phi_y)$ we have to integrate over $\{p_x,p_y\}$ and to maintain dimensionlessness of ratio of these masses, this integration will take form
+	\begin{align}
+	\frac{m}{m_{x,\mathbf{k}}}=&\alpha^{3/2}\frac{d^2}{\hbar^2}\iint f(\phi_x, \phi_y)\cos(k_{x}d)\text{d}p_x\text{d}p_y \\
+	=&\alpha^{3/2}\int^{\pi}_{-\pi}\text{d}\phi_x\int^{+\infty}_{-\infty}\text{d}\phi_y f(\phi_x, \phi_y)\cos(\phi_x) \\
+	=&\alpha^{3/2}\int^{\pi}_{-\pi}\text{d}\phi_x\int^{+\infty}_{-\infty}\text{d}\phi_y a_1(\phi_y)\cos(\phi_x)\cos(\phi_x)
+	\end{align}
+	Finally giving us following
+	\begin{equation}
+	\boxed{
+		\frac{m}{m_{x,\mathbf{k}}}=\pi\alpha^{3/2}\int^{+\infty}_{-\infty} a_1(\phi_y)\text{d}\phi_y
+		}
+	\end{equation}
+	Now using fourier representation of $f(\phi_x,\phi_y)$ and $f_0(\phi_y)$ (equations \ref{eq:f0_fourier_representation}, \ref{eq:f_fourier_representation}) we can rewrite Boltzmann equation (\ref{eq:boltzmann_final}) like this
+	\begin{align}
+	&\sum_{(n)}\bigg \{ \frac{\partial a_n}{\partial t}\cos(n\phi_x) + \frac{\partial b_n}{\partial t}\sin(n\phi_x) = a^{(0)}_{n}\cos(n\phi_x)-a_n\cos(n\phi_x)-b_n\sin(n\phi_x)+\nonumber \\
+	&n(\tilde{E}+\tilde{B}\phi_y)(a_n\sin(n\phi_x)-b_n\cos(n\phi_x))+ \tilde{B}\frac{\partial a_n}{\partial\phi_y}\sin(\phi_x)\cos(n\phi_x) + \tilde{B}\frac{\partial b_n}{\partial\phi_y}\sin(\phi_x)\sin(n\phi_x)\bigg \}
+	\end{align}
+	In absence of magnetic field there is no mixing of different harmonic, however when $\tilde{B}$ is not $0$ then harmonics will be come mixed due to presence of $\sin(\phi_x)\cos(n\phi_x)$ and $\sin(\phi_x)\sin(n\phi_x)$, since
+	\begin{align}
+	\sin(\phi_x)\cos(n\phi_x)=&\left \{ \sin((n+1)\phi_x) -\sin((n-1)\phi_x) \right \}/2 \\
+	\sin(\phi_x)\sin(n\phi_x)=&\left \{ \cos((n-1)\phi_x) -\cos((n+1)\phi_x) \right \}/2
+	\end{align}
+	And using this equations, after some manipultion of symbols,
+	combining elements with the same harmonics, and noting special treatment of $b_1$ we get
+	\begin{align}
+		\frac{\partial a_n}{\partial t}=&a^{(0)}_n-a_n-n(\tilde{E}+\tilde{B}\phi_y)b_n+\tilde{B}\left ( \frac{\partial b_{n+1}}{\partial\phi_y}-\frac{\partial b_{n-1}}{\partial\phi_y} \right )\label{eq:a_n_dot} \\
+		\frac{\partial b_n}{\partial t}=&-b_n-n(\tilde{E}+\tilde{B}\phi_y)a_n+\tilde{B}\left ( \chi(n)\frac{\partial a_{n-1}}{\partial\phi_y}-\frac{\partial a_{n+1}}{\partial\phi_y} \right ) \label{eq:b_n_dot}
+	\end{align}
+	where
+	\begin{equation}
+		\chi(n)=
+		\begin{cases}
+	   2 & : n= 1 \\
+	   1 & : n\ne 1
+	  \end{cases}
+	\end{equation}
+	The quantity we are most intersted is absorption defined like this
+
+    \section{Numerical solution}
+   	Straightforward application of method of finite differences to (\ref{eq:a_n_dot}) and (\ref{eq:b_n_dot}) leads to either unstable or difficult, i.e. computationally intensive, equations. To combat this problem I am using several methods at once.
+	First, we are going to discretize $a_{n}$ and $b_{n}$ along time and $\phi_y$ axes.
+	\begin{equation}
+		a^{\textstyle t\leftarrow\text{time step}}_{\textstyle n,m\leftarrow \phi_y \text{lattice step}}
+	\end{equation}
+	and $n$ is "harmonic number". So, here we are going to do some tricky things. We are going to write two forms of equations (\ref{eq:a_n_dot}) and (\ref{eq:b_n_dot}).
+	One using forward differences and one using partial backward differences, i.e. on the right side of equal sign we are going to write partial derivatives at time $t$ while everything else at time $t+1$ and will follow standard procedure of Crank–Nicolson scheme by adding these two, 
+	forward and backward differences equations. First, forward differencing scheme
+	\begin{align}
+	a^{t+1}_{n,m}-a^{t}_{n,m}=&a^{(0)}_{n,m}\Delta t-a^t_{n,m}\Delta t-
+	2b^t_{n,m}\mu^t_{n,m}+\nonumber \\
+	&+\frac{\alpha B\Delta t}{2\Delta\phi}(b^t_{n+1,m+1}-b^t_{n+1,m-1}-b^t_{n-1,m+1}+b^t_{n-1,m-1}) \label{eq:a_forward}\\
+	b^{t+1}_{n,m}-b^{t}_{n,m}=&-b^t_{n,m}\Delta t+2a^{t}_{n,m}\mu^t_{n,m}+\nonumber \\
+	&+\frac{\alpha B\Delta t}{2\Delta\phi}(\chi(n)[a^t_{n-1,m+1}-a^t_{n-1,m-1}]-a^t_{n+1,m+1}+a^t_{n+1,m-1}) \label{eq:b_forward}
+	\end{align}
+	And then partial backward differencing scheme
+	\begin{align}	
+	a^{t+1}_{n,m}-a^{t}_{n,m}=&a^{(0)}_{n,m}\Delta t-a^{t+1}_{n,m}\Delta t-
+	2b^{t+1}_{n,m}\mu^{t+1}_{n,m}+\nonumber \\
+	&+\frac{\alpha B\Delta t}{2\Delta\phi}(b^t_{n+1,m+1}-b^t_{n+1,m-1}-b^t_{n-1,m+1}+b^t_{n-1,m-1}) \label{eq:a_backward}\\
+	b^{t+1}_{n,m}-b^{t}_{n,m}=&-b^{t+1}_{n,m}\Delta t+2a^{t+1}_{n,m}\mu^{t+1}_{n,m}+\nonumber \\
+	&+\frac{\alpha B\Delta t}{2\Delta\phi}(\chi(n)[a^t_{n-1,m+1}-a^t_{n-1,m-1}]-a^t_{n+1,m+1}+a^t_{n+1,m-1}) \label{eq:b_backward}
+	\end{align}
+	where 
+	\begin{align}
+	\beta^t_m=&E^t+B^t\phi_y(m) \\
+	\mu^t_{n,m}=&n\beta^t_{m}\Delta t
+	\end{align}
+	And application of Crank–Nicolson scheme leads to
+	\begin{align}
+	a^{t+1}_{n,m}=\frac{g^t_{n,m}\nu-h^t_{n,m}\mu^{t+1}_{n,m}}{\nu^2+\left(\mu^{t+1}_{n,m}\right)^2}\label{eq:a_t_plus_1}\\
+	b^{t+1}_{n,m}=\frac{g^t_{n,m}\mu^{t+1}_{n,m}-h^t_{n,m}\nu}{\nu^2+\left(\mu^{t+1}_{n,m}\right)^2}\label{eq:b_t_plus_1}
+	\end{align}
+	where 
+	\begin{align}
+	\nu=&1+\Delta t/2 \\
+	\xi=&1-\Delta t/2 
+	\end{align}
+	\begin{align}
+	g^t_{n,m}=&a^t_{n,m}\xi-
+		b^t_{n,m}\mu^t_{n,m}+A^t_{n,m}+a^{(0)}_{n,m}\Delta t \\
+	h^t_{n,m}=&b^t_{n,m}\xi+a^t_{n,m}\mu^t_{n,m}+
+		B^t_{n,m} \\
+	A^t_{n,m}=&\frac{\alpha B\Delta t}{2\Delta\phi}(\chi(n)[a^t_{n-1,m+1}-a^t_{n-1,m-1}]-a^t_{n+1,m+1}+a^t_{n+1,m-1}) \\
+	B^t_{n,m}=&\frac{\alpha B\Delta t}{2\Delta\phi}(b^t_{n+1,m+1}-b^t_{n+1,m-1}-
+		b^t_{n-1,m+1}+b^t_{n-1,m-1})
+	\end{align}
+	Equations (\ref{eq:a_t_plus_1}) and (\ref{eq:b_t_plus_1}) allow us to step forward in time, however they are only conditionally stable because $A^t_{n,m}$ and $B^t_{n,m}$ are taken at time $t$, which means that we have to take time step $dt$ to be very, vary small. To make time step much larger without solving implicit equations, to calculate $a^{t+1}_{n,m}$ and $b^{t+1}_{n,m}$ we will do two steps. First we will use (\ref{eq:a_t_plus_1}) and (\ref{eq:b_t_plus_1}) to make a trial step and then make the same step forward now using $A^{t+1}_{n,m}$ and $B^{t+1}_{n,m}$ leaving all other parts of (\ref{eq:a_t_plus_1}), (\ref{eq:b_t_plus_1}) the same. Resulting equation is still not unconditionally stable, but it is much more relaxed as far as value of time step, which can now be taken much larger than with strightforward aplication of (\ref{eq:a_t_plus_1}) and (\ref{eq:b_t_plus_1}).
+	\newpage
+	\pagenumbering{gobble}
+	\begin{figure}[t]
+	  \centering
+	  \normalsize
+	  \input{plots/v_dr_of_e_dc_B=4_mu=11_dot_6_116}
+	  \label{fig:v_dr_of_E_dc_B=4_different_mu}
+	  \caption{}
+	\end{figure}
+	\begin{figure}[H]
+	  \centering
+	  \normalsize
+	  \input{plots/m_over_m_xk_of_e_dc_B=4_mu=11_dot_6_116}
+	  \label{fig:effect1ive_mass_of_E_dc_B=4_different_mu}
+	  \caption{}
+	\end{figure}
+	\newpage
+	\begin{figure}[t]
+	  \centering
+	  \normalsize % use normal font size in the figure
+	  \input{plots/v_dr_of_e_dc_B=diff}
+	  \label{fig:v_dr_of_E_dc_different_B}
+	  \caption{}
+	\end{figure}
+	\begin{figure}[H]
+	  \centering
+	  \normalsize % use normal font size in the figure
+	  \input{plots/m_over_m_xk_of_e_dc_B=diff}
+	  \label{fig:effect1ive_mass_of_E_dc_different_B}
+	  \caption{}
+	\end{figure}
+	\newpage	
+%	\begin{figure}[t] %
+%	  \centering
+%	  \normalsize % use normal font size in the figure
+%	  \input{combined_B=0_and_4_mu=116_and_1_16_E_omega=0_1}
+%	  \label{fig:combined_B=0_and_4_mu=116_and_1_16_E_omega=0_1}
+%	  \caption{}
+%	\end{figure}		
+	\begin{figure}[t]
+	  \centering
+	  \normalsize % use normal font size in the figure
+	  \input{plots/combined_B=4_mu=116_E_omega=0_1_E_dc=6_vs_6_point_4}
+	  \label{fig:combined_B=4_mu=116_E_omega=0_1_E_dc=6_vs_6_point_4}
+	  \caption{}
+	\end{figure}	
+	\begin{figure}[H]
+	  \centering
+	  \normalsize % use normal font size in the figure
+	  \input{plots/cycl_vs_bloch_gain}
+	  \label{fig:cycl_vs_bloch_gain}
+	  \caption{}
+	\end{figure}	
+	\newpage
+	\begin{figure}[t]
+	  \centering
+	  \normalsize % use normal font size in the figure
+	  \input{plots/lorentz_gain}
+	  \label{fig:lorentz_gain}
+	  \caption{}
+	\end{figure}	
+	\begin{figure}[H]
+	  \centering
+	  \normalsize % use normal font size in the figure
+	  \input{plots/gain_at_E_dc=6}
+	  \label{fig:gain_at_E_dc=6}
+	  \caption{}
+	\end{figure}
+	\newpage
+	\begin{figure}[H]
+	  \centering
+	  \normalsize % use normal font size in the figure
+	  \input{plots/vary_omega_B=4_mu=116_E_omega=0_1_E_dc=7_point_8}
+	  \label{fig:absorption_ref_E_dc_7_point_8}
+	  \caption{}
+	\end{figure}	
+	
+	\newpage	
+	\begin{figure}[t]
+	  \centering
+	  \normalsize % use normal font size in the figure
+	  \input{plots/f_of_phi_x_and_time_A=-0_point_038_full}
+	  \label{fig:negative_absorption_time_plot}
+	  \caption{}
+	\end{figure}	
+	\begin{figure}[H]
+	  \centering
+	  \normalsize % use normal font size in the figure
+	  \input{plots/f_of_phi_x_and_time_A=-0_point_038_fragment}
+	  \label{fig:negative_absorption_time_plot_zoom}
+	  \caption{}
+	\end{figure}	
+	\begin{figure}[t]
+	  \centering
+	  \normalsize % use normal font size in the figure
+	  \input{plots/f_of_phi_x_and_time_A=0_point_02_full}
+	  \label{fig:positive_absorption_time_plot}
+	  \caption{}
+	\end{figure}	
+	\begin{figure}[H]
+	  \centering
+	  \normalsize % use normal font size in the figure
+	  \input{plots/f_of_phi_x_and_time_A=0_point_02_fragment}
+	  \label{fig:positive_absorption_time_plot_zoom}
+	  \caption{}
+	\end{figure}	
+\end{document}
+  

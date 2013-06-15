@@ -1,0 +1,298 @@
+\documentclass[40pt,letterpaper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{cancel}
+\usepackage{datetime}
+\usepackage{fullpage}
+\DeclareGraphicsExtensions{.pdf,.png,.jpg} 
+\author{Dmitri Priimak}
+\title{Numerical solution of Boltzmann equation in 2D SSL with cross magnetic and electric fields}
+\begin{document}
+ \begin{center}
+  \underline{Numerical solution of Boltzmann equation in 2D SSL with cross magnetic and electric fields}
+ \end{center}
+  \begin{center}
+    \underline{Rev. 1}
+  \end{center}
+  \section{Analytical treatment}
+    We start from following Boltzmann equation
+    \begin{equation}\label{eq:boltzmann}
+     \frac{\partial f}{\partial t}+
+     \frac{e}{\hbar}\left ( \mathbf{E} + \mathbf{v}\times\mathbf{B} \right ) \frac{\partial f}{\partial\mathbf{k}}+
+     \mathbf{v}(\mathbf{k})\frac{\partial f}{\partial r} = \left ( \frac{\partial f}{\partial t} \right )_{st}
+    \end{equation}
+    We consider case when $f(...)$ is spatially homogeneous, i.e. it depends only on $\mathbf{k}$, then
+    \begin{equation}\label{eq:boltzmann_homo}
+     \frac{\partial f}{\partial t}+
+     \frac{e}{\hbar}\left ( \mathbf{E} + \mathbf{v}\times\mathbf{B} \right ) \frac{\partial f}{\partial\mathbf{k}}+
+     = \frac{1}{\tau}\left ( f_0 - f \right )
+    \end{equation}
+    Electric field is along x-axis and magnetic field is along z-axis.
+    \begin{align}
+     \mathbf{E}=&(E,0,0) \\
+     \mathbf{B}=&(0,0,B) \\
+     \mathbf{v}\times\mathbf{B}=&(v_y B, -v_x B, 0)
+    \end{align}
+    And will make following substitutions
+    \begin{align}
+     d\mathbf{k}=&\mathbf{\phi} \\
+     t \to & \tau t
+    \end{align}
+    which gives
+    \begin{equation}
+     \frac{\partial f}{\partial t}+
+     \frac{ed\tau}{\hbar}\left ( \mathbf{E} + \mathbf{v}\times\mathbf{B} \right ) \frac{\partial f}{\partial\mathbf{\phi}}+
+     = f_0 - f
+    \end{equation}
+    and with following substitutions
+    \begin{align}
+     \frac{ed\tau}{\hbar}\mathbf{E}\to & \mathbf{E} \\     
+     \frac{ed\tau}{\hbar}\mathbf{B}\to & \mathbf{B}
+    \end{align}
+    we come to 
+    \begin{equation}
+     \frac{\partial f}{\partial t} = f_0 - f - 
+     \left ( E + v_y B \right )\frac{\partial f}{\partial\phi_{x}}+
+     v_x B \frac{\partial f}{\partial\phi_{y}}
+    \end{equation}
+    Now
+    \begin{align}
+     \mathbf{v}(\mathbf{k})=&\frac{1}{\hbar}\frac{\partial\varepsilon}{\partial\mathbf{k}} \\
+     \varepsilon =\frac{\hbar^{2}k_{y}^2}{2m}-&\frac{\Delta_1}{2}\text{cos}(k_{x}d)
+    \end{align}
+    \begin{align}
+     v_x=&\frac{\Delta_{1}d}{2\hbar}\text{sin}(\phi_x) \\
+     v_y=&\frac{\hbar k_y}{m}=\frac{\hbar}{dm}\phi_y
+    \end{align}
+    All of this gives us following expression for Boltzmann equation
+    \begin{equation}
+     \frac{\partial f}{\partial t} = f_0 - f - 
+     \left ( E + \frac{\hbar B}{dm}\phi_y \right ) \frac{\partial f}{\partial\phi_{x}}+
+     \frac{\Delta_1 dB}{2\hbar}\text{sin}(\phi_x) \frac{\partial f}{\partial\phi_{y}}
+    \end{equation}
+    and with following substitution 
+    \begin{equation}
+     B\to\frac{dmB}{\hbar}
+    \end{equation}
+    we get our final equation, with which we will be working
+    \begin{equation}\label{eq:boltzmann_dimmensionless}
+     \boxed{
+     \frac{\partial f}{\partial t} = f_0 - f - 
+     \left ( E + B\phi_y \right ) \frac{\partial f}{\partial\phi_{x}}+
+     \alpha B\text{sin}(\phi_x) \frac{\partial f}{\partial\phi_{y}}}
+    \end{equation}
+    where
+    \begin{equation}
+     \alpha=\frac{\Delta_{1}d^{2}m}{2\hbar^2}
+    \end{equation}
+    in notation used by Timo $\alpha$ is $m/m_*$, where $m_*$ is effective mass.
+    \section{Numerical solution}
+	Straightforward application of method of finite differences to (\ref{eq:boltzmann_dimmensionless}) leads to either unstable or difficult, i.e. computationally intensive, equations. To combat this problem I am using several methods at once. First, knowing that $f(\phi_x, \phi_y, t)$ is periodic along $\phi_x$ with period $2\pi$ and additionally $f_0(-\phi_x, \phi_y, t)=f_0(\phi_x, \phi_y, t)$, we expand $f$ and $f_0$ into Fourier series. 
+	\begin{align}
+		f_0=&a^{(0)}_0+\sum^\infty_{n=1}a^{(0)}_{n}\text{cos}(n\phi_x)\label{eq:f0_fourier_representation} \\
+		f=&a_0+\sum^\infty_{n=1}a_{n}\text{cos}(n\phi_x)+
+		b_{n}\text{sin}(n\phi_x)\label{eq:f_fourier_representation}
+	\end{align}
+	where $a^{(0)}_n=a^{(0)}_n(\phi_y)$ and $a_n=a_n(\phi_y, t)$, $b_n=b_n(\phi_y, t)$.
+	Now, substituting these expression for $f$ and $f_0$ into (\ref{eq:boltzmann_dimmensionless}) we get.
+	\begin{align}
+	\sum^\infty_{n=0} \lbrace \frac{\partial a_n}{\partial t}\text{cos}(n\phi_x) 
+	+ \frac{\partial b_n}{\partial t}\text{sin}(n\phi_x) =& a^{(0)}\cos(n\phi_x) -
+	a_{n}\cos(n\phi_x)-b_{n}\sin(n\phi_x)+a_{n}(E+B\phi_y)n\sin(n\phi_x)- \nonumber \\
+	- b_{n}(E+B\phi_y)n\cos(n\phi_x) +& 
+	\alpha B\frac{\partial a_n}{\partial\phi_y}\sin(\phi_x)\cos(n\phi_x) + 
+	\alpha B\frac{\partial b_n}{\partial\phi_y}\sin(\phi_x)\sin(n\phi_x)
+	\rbrace
+	\end{align}
+	There are two elements in this equation that we need to massage a bit more.
+	Specifically I am talking about these two 
+	$\sin(\phi_x)\cos(n\phi_x)$ and $\sin(\phi_x)\sin(n\phi_x)$. The first function is 
+	antisymmetric and second one is symmetric with regards to $\phi_x$. Thus in essence
+	we expand these two functions in Fourier series of their own.
+	\begin{align}
+	\sin(\phi_x)\sin(m\phi_x)=\sum^\infty_{n=1}\gamma^m_n\cos(n\phi_x) \\
+	\sin(\phi_x)\cos(m\phi_x)=\sum^\infty_{n=0}\sigma^m_n\sin(n\phi_x)
+	\end{align}
+	Notice, that first sum starts from $n=1$, while second starts with $n=0$. 
+	After trivial calculations we arrive at the following equations, valid for for all $m\geq 0$
+	\begin{align}
+	\sin(\phi_x)\sin(m\phi_x)=\frac{1}{2}\left\lbrace \cos((m-1)\phi_x) -
+	\cos((m+1)\phi_x)\right\rbrace \\
+	\sin(\phi_x)\cos(m\phi_x)=\frac{1}{2}\left\lbrace \sin((m+1)\phi_x) -
+	\sin((m-1)\phi_x)\right\rbrace
+	\end{align}
+	And now after mildly laborious manipulations with our newly derived expressions 
+	for $\sin\times\sin$ and $\sin\times\cos$ we arrive to two equations
+	\begin{align}
+	\frac{\partial a_n}{\partial t}=& a^{0}_n -a_n-b_{n}\beta n + 
+	\frac{\gamma}{2}\left(\frac{\partial b_{n+1}}{\partial\phi_y} - 
+	\frac{\partial b_{n-1}}{\partial\phi_y} \right) \text{ for } n\geq 0 \label{eq:a_n_dt}\\
+	\frac{\partial b_n}{\partial t}= & -b_n + a_n\beta n + 
+	\frac{\gamma}{2}\left(\chi(n)\frac{\partial a_{n-1}}{\partial\phi_y} - 
+	\frac{\partial a_{n+1}}{\partial\phi_y} \right) \text{ for } n\geq 1 \label{eq:b_n_dt}
+	\end{align}	 
+	where
+	\begin{align}
+	\gamma=&\alpha B \\
+	\beta=&E+B\phi_y \\
+	\chi(n)=&
+	\begin{cases}
+   2 & : n= 1 \\
+   1 & : n\ne 1
+  \end{cases}
+	\end{align}
+	and 
+	\begin{align}
+	a_{n}=0 \text{ for } n<0 \\	
+	b_{n}=0 \text{ for } n<1
+	\end{align}
+	And now we are going to discretize (\ref{eq:a_n_dt}) and (\ref{eq:b_n_dt}) along time and $\phi_y$ axes.
+	\begin{equation*}
+	a^{\textstyle t\leftarrow\text{time step}}_{\textstyle n,m\leftarrow \phi_y \text{lattice step}}
+	\end{equation*}
+	and $n$ is "harmonic number". So here we are going to do some trickery. We are going to 
+	write two forms of equations (\ref{eq:a_n_dt}) and (\ref{eq:b_n_dt}). One using forward
+	differences and one using partial backward differences, i.e. on the right side of equal sign we are going to write partial derivatives at time $t$ while everything else at time $t+1$ and will follow standard procedure of Crank–Nicolson scheme by adding these two, 
+	forward and backward differences equations. First, forward differencing scheme
+	\begin{align}
+	a^{t+1}_{n,m}-a^{t}_{n,m}=&a^{(0)}_{n,m}\Delta t-a^t_{n,m}\Delta t-
+	2b^t_{n,m}\mu^t_{n,m}+\nonumber \\
+	&+\frac{\alpha B\Delta t}{2\Delta\phi}(b^t_{n+1,m+1}-b^t_{n+1,m-1}-b^t_{n-1,m+1}+b^t_{n-1,m-1}) \label{eq:a_forward}\\
+	b^{t+1}_{n,m}-b^{t}_{n,m}=&-b^t_{n,m}\Delta t+2a^{t}_{n,m}\mu^t_{n,m}+\nonumber \\
+	&+\frac{\alpha B\Delta t}{2\Delta\phi}(\chi(n)[a^t_{n-1,m+1}-a^t_{n-1,m-1}]-a^t_{n+1,m+1}+a^t_{n+1,m-1}) \label{eq:b_forward}
+	\end{align}
+	And then partial backward differencing scheme
+	\begin{align}	
+	a^{t+1}_{n,m}-a^{t}_{n,m}=&a^{(0)}_{n,m}\Delta t-a^{t+1}_{n,m}\Delta t-
+	2b^{t+1}_{n,m}\mu^{t+1}_{n,m}+\nonumber \\
+	&+\frac{\alpha B\Delta t}{2\Delta\phi}(b^t_{n+1,m+1}-b^t_{n+1,m-1}-b^t_{n-1,m+1}+b^t_{n-1,m-1}) \label{eq:a_backward}\\
+	b^{t+1}_{n,m}-b^{t}_{n,m}=&-b^{t+1}_{n,m}\Delta t+2a^{t+1}_{n,m}\mu^{t+1}_{n,m}+\nonumber \\
+	&+\frac{\alpha B\Delta t}{2\Delta\phi}(\chi(n)[a^t_{n-1,m+1}-a^t_{n-1,m-1}]-a^t_{n+1,m+1}+a^t_{n+1,m-1}) \label{eq:b_backward}
+	\end{align}
+	where 
+	\begin{align}
+	\beta^t_m=&E^t+B^t\phi_y(m) \\
+	\mu^t_{n,m}=&n\beta^t_{m}\Delta t
+	\end{align}
+	And application of Crank–Nicolson scheme leads to
+	\begin{align}
+	a^{t+1}_{n,m}=\frac{g^t_{n,m}\nu-h^t_{n,m}\mu^{t+1}_{n,m}}{\nu^2+\left(\mu^{t+1}_{n,m}\right)^2}\label{eq:a_t_plus_1}\\
+	b^{t+1}_{n,m}=\frac{g^t_{n,m}\mu^{t+1}_{n,m}-h^t_{n,m}\nu}{\nu^2+\left(\mu^{t+1}_{n,m}\right)^2}\label{eq:b_t_plus_1}
+	\end{align}
+	where 
+	\begin{align}
+	\nu=&1+\Delta t/2 \\
+	\xi=&1-\Delta t/2 
+	\end{align}
+	\begin{align}
+	g^t_{n,m}=&a^t_{n,m}\xi-
+		b^t_{n,m}\mu^t_{n,m}+A^t_{n,m}+a^{(0)}_{n,m}\Delta t \\
+	h^t_{n,m}=&b^t_{n,m}\xi+a^t_{n,m}\mu^t_{n,m}+
+		B^t_{n,m} \\
+	A^t_{n,m}=&\frac{\alpha B\Delta t}{2\Delta\phi}(\chi(n)[a^t_{n-1,m+1}-a^t_{n-1,m-1}]-a^t_{n+1,m+1}+a^t_{n+1,m-1}) \\
+	B^t_{n,m}=&\frac{\alpha B\Delta t}{2\Delta\phi}(b^t_{n+1,m+1}-b^t_{n+1,m-1}-
+		b^t_{n-1,m+1}+b^t_{n-1,m-1})
+	\end{align}
+	Equations (\ref{eq:a_t_plus_1}) and (\ref{eq:b_t_plus_1}) allow us to step forward in time, but what we really want is to solve these 
+	equations where $A_{n,m}$ and $B_{n,m}$ are taken at time $t+1$, which will give us implicit scheme. However resulting equations will be 
+	explicit when going back in time from $t+1$ to $t$.
+	\begin{align}
+	 a^t_{n,m}(\xi\nu-\mu^t_{n,m}\mu^{t+1}_{n,m})-b^t_{n,m}(\xi\mu^{t+1}_{n,m}+\mu^t_{n,m}\nu)=&
+	  F^{t+1}_{n,m} \\
+	 a^t_{n,m}(\xi\mu^{t+1}_{n,m}-\mu^t_{n,m}\nu)-b^t_{n,m}(\xi\nu+\mu^t_{n,m}\mu^{t+1}_{n,m})=&
+	  G^{t+1}_{n,m} 
+	\end{align}
+	where
+	\begin{align}	
+	 F^{t+1}_{n,m}=&a^{t+1}_{n,m}\sigma-a^{(0)}_{n,m}\Delta t\nu-A^{t+1}_{n,m}\nu+B^{t+1}_{n,m}\mu^{t+1}_{n,m} \\
+	 G^{t+1}_{n,m}=&b^{t+1}_{n,m}\sigma-a^{(0)}_{n,m}\Delta t\mu^{t+1}_{n,m}-A^{t+1}_{n,m}\mu^{t+1}_{n,m}+B^{t+1}_{n,m}\nu \\
+	 \sigma=&\nu^2+ \left ( \mu^{t+1}_{n,m} \right ) ^2
+	\end{align}
+	can easily be solved, giving us following
+	\begin{align}
+	 a^{t}_{n,m}=&\frac{F^{t+1}_{n,m}\left ( \xi\nu+\mu^t_{n,m}\mu^{t+1}_{n,m} \right ) -
+	  G^{t+1}_{n,m} \left ( \xi\mu^{t+1}_{n,m} + \mu^t_{n,m}\nu \right ) }
+	    {\left (\xi^2+ \left ( \mu^t_{n,m} \right ) ^2 \right ) \left (\nu^2-\left ( \mu^{t+1}_{n,m} \right ) ^2 \right )} \label{eq:a_t}\\
+	 b^{t}_{n,m}=&\frac{F^{t+1}_{n,m}\left ( \xi\mu^{t+1}_{n,m}-\mu^t_{n,m}\nu \right ) -
+	  G^{t+1}_{n,m} \left ( \xi\nu-\mu^t_{n,m}\mu^{t+1}_{n,m} \right ) }
+	    {\left (\xi^2+ \left ( \mu^t_{n,m} \right ) ^2 \right ) \left (\nu^2-\left ( \mu^{t+1}_{n,m} \right ) ^2 \right )} \label{eq:b_t}
+	\end{align}
+	Now we can look equations (\ref{eq:a_t_plus_1}) and (\ref{eq:b_t_plus_1}) as an operator $\hat{L}_f$ taking vector
+	tuple $(\mathbf{a},\mathbf{b})$ from time step $t$ to $t+1$ and (\ref{eq:a_t}) and (\ref{eq:b_t}) as an opposite operator $\hat{L}_b$.
+	\begin{align}
+	  (\mathbf{a},\mathbf{b})^{t+1}=&\hat{L}_f (\mathbf{a},\mathbf{b})^t \\
+	  (\mathbf{a},\mathbf{b})^{t}=&\hat{L}_b (\mathbf{a},\mathbf{b})^{t+1}
+	\end{align}
+	
+
+	
+	Now, to verify that our numerical calculations are not too much out of whack, we can 
+	check that $f(\phi_x,\phi_y,t)$, eq. (\ref{eq:f_fourier_representation}), is 
+	normalized to 1. Which for us takes very convenient form 
+	\begin{equation}
+	\frac{2\pi}{d^2}\int^{+\infty}_{-\infty}a_0(\phi_y)\text{d}\phi_y=1
+	\end{equation}
+	The principal quantity that we will be looking at is $v_{dr}/v_{0}$, where $v_0=d\Delta_1/(2\hbar)$, $d$ is period of lattice and $\Delta_1$ zone width. And again it 
+	takes very convenient form 
+	\begin{equation}
+	\frac{v_{dr}}{v_0}=\frac{\hbar\pi}{d^2}\int^{+\infty}_{-\infty}b_1(\phi_y)\text{d}\phi_y
+	\end{equation}
+	We will be applying constant magnetic field B and potentially periodic electric field
+	\begin{equation}
+	E=E_{dc}+E_{\omega}cos(\omega t)
+	\end{equation}
+	In case of when only $E_{dc}$ is applied we expect to recover $v_{dr}/v_0$ as a function of $E_{dc}$ in the form of Esaki-Tsu equation
+	\begin{equation}
+	\frac{v_{dr}}{v_0}=\hbar\frac{I_1\left(\frac{\Delta_1}{2K_BT}\right)}{I_1\left(\frac{\Delta_1}{2K_BT}\right)}\frac{E_{dc}}{1+E^2_{dc}}
+	\end{equation}
+	\section{Results}
+	As usual following constants were used in numerical calculations
+		\begin{align*}
+		e&=1 \leftarrow \text{charge of the electron}\\
+		\hbar&=1 \leftarrow \text{Planck's constant}\\
+		k&=1 \leftarrow \text{Boltzmann constant}\\
+		\Delta_1&=1 \leftarrow \text{miniband width}\\
+		d&=1 \leftarrow \text{super-lattice period}
+	\end{align*}
+	In calculations used to generate plots shown below, I have used 100 harmonics and $\phi_y$ axis was broken into 2000 steps from -1 to +1. 
+	The first plot (Fig: 1) shows recovery of Esaki-Tsu dependency when only $E_{dc}$ is applied.
+%	\begin{figure}[p]
+%	  \centering
+%	  \includegraphics[width=160mm]{./2d_v_dr_esaki_tsu.png}
+%	  \label{fig:v_dc_esaki_tsu}
+%	  \caption{Comparison of numerical solution (solid line) with known Esaki-Tsu formula. Here $d$, period of superlattice, is $0.1$.}
+%	\end{figure}
+	You can see that indeed that is the case. Following two plots show equilibrium distribution at $T=0.5$ (Fig: 2) and its final form when $E_{dc}=1$ is applied (Fig: \ref{fig:f_E_dc=1_T=0.1}). Then we turn on constant magnetic field. In figure 
+	4 you can see bending effect that magnetic field $B=15$ has on distribution function shifted to the right by application of $E_{dc}=3$. And in the next figure 5 you can see, that stronger magnetic field starts to completely wrap distribution function on itself. Already from this pictures we can see that how it happens that we for relatively small $E_{dc}$ application of week perpendicular magnetic field reduces current, while for $E_{dc}$ above some critical value it increases current as it brings distribution function from regions with negative momentum into regions with positive momentum. Solutions at higher values of magnetic field are, us usually, hampered by numerical instability. However, region of parameters where numerical system is stable is large enough to allow meaningful experimentation.
+	
+%	\begin{figure}[p]
+%	  \centering
+%	  \includegraphics[width=160mm]{./f0_phi_x_T=0_1.png}
+%	  \label{fig:f0_T=0.1}
+%	  \caption{}	
+%	\end{figure}	
+	
+%	\begin{figure}[p]
+%	  \centering
+%	  \includegraphics[width=160mm]{./f1_phi_x_E_dc=1_E_omega=0_B=0_T=0_1.png}
+%	  \label{fig:f_E_dc=1_T=0.1}
+%	  \caption{}
+%	\end{figure}	
+
+%	\begin{figure}[p]
+%	  \centering
+%	  \includegraphics[width=160mm]{./f1_phi_x_E_dc=3_E_omega=0_B=15_T=0_1.png}
+%	  \label{fig:f_E_dc=3_B=15_T=0.1}
+%	  \caption{}
+%	\end{figure}	
+%	\begin{figure}[p]
+%	  \centering
+%	  \includegraphics[width=160mm]{./f1_phi_x_E_dc=3_E_omega=0_B=25_T=0_1.png}
+%	  \label{fig:f_E_dc=3_B=25_T=0.1}
+%	  \caption{}
+%	\end{figure}	
+\end{document}

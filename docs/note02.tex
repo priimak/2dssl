@@ -1,0 +1,132 @@
+\documentclass[40pt,letterpaper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{cancel}
+\usepackage{datetime}
+\usepackage{fullpage}
+\DeclareGraphicsExtensions{.pdf,.png,.jpg} 
+\author{Dmitri Priimak}
+\title{Boltzmann equation in 2D SSL with cross magnetic and electric fields}
+\begin{document}
+ \begin{center}
+  \underline{Boltzmann equation in 2D SSL with cross magnetic and electric fields}
+ \end{center}
+  \begin{center}
+    \underline{Rev. 1}
+  \end{center}
+  \section{Analytical treatment}
+    We start from following Boltzmann equation
+    \begin{equation}\label{eq:boltzmann}
+     \frac{\partial f}{\partial t}+
+     \frac{e}{\hbar}\left ( \mathbf{E} + \mathbf{v}\times\mathbf{B} \right ) \frac{\partial f}{\partial\mathbf{k}}+
+     \mathbf{v}(\mathbf{k})\frac{\partial f}{\partial r} = \left ( \frac{\partial f}{\partial t} \right )_{st}
+    \end{equation}
+    We consider case when $f(...)$ is spatially homogeneous, i.e. it depends only on $\mathbf{k}$, then
+    \begin{equation}\label{eq:boltzmann_homo}
+     \frac{\partial f}{\partial t}+
+     \frac{e}{\hbar}\left ( \mathbf{E} + \mathbf{v}\times\mathbf{B} \right ) \frac{\partial f}{\partial\mathbf{k}}+
+     = \frac{1}{\tau}\left ( f_0 - f \right )
+    \end{equation}
+    Electric field is along x-axis and magnetic field is along z-axis.
+    \begin{align}
+     \mathbf{E}=&(E,0,0) \\
+     \mathbf{B}=&(0,0,B) \\
+     \mathbf{v}\times\mathbf{B}=&(v_y B, -v_x B, 0)
+    \end{align}
+    And will make following substitutions
+    \begin{align}
+     d\mathbf{k}=&\mathbf{\phi} \\
+     t \to & \tau t
+    \end{align}
+    which gives
+    \begin{equation}
+     \frac{\partial f}{\partial t}+
+     \frac{ed\tau}{\hbar}\left ( \mathbf{E} + \mathbf{v}\times\mathbf{B} \right ) \frac{\partial f}{\partial\mathbf{\phi}}+
+     = f_0 - f
+    \end{equation}
+    and with following substitutions
+    \begin{align}
+     \frac{ed\tau}{\hbar}\mathbf{E}\to & \mathbf{E} \\     
+     \frac{ed\tau}{\hbar}\mathbf{B}\to & \mathbf{B}
+    \end{align}
+    we come to 
+    \begin{equation}
+     \frac{\partial f}{\partial t} = f_0 - f - 
+     \left ( E + v_y B \right )\frac{\partial f}{\partial\phi_{x}}+
+     v_x B \frac{\partial f}{\partial\phi_{y}}
+    \end{equation}
+    Now
+    \begin{align}
+     \mathbf{v}(\mathbf{k})=&\frac{1}{\hbar}\frac{\partial\varepsilon}{\partial\mathbf{k}} \\
+     \varepsilon =\frac{\hbar^{2}k_{y}^2}{2m}-&\frac{\Delta_1}{2}\text{cos}(k_{x}d)
+    \end{align}
+    \begin{align}
+     v_x=&\frac{\Delta_{1}d}{2\hbar}\text{sin}(\phi_x) \\
+     v_y=&\frac{\hbar k_y}{m}=\frac{\hbar}{dm}\phi_y
+    \end{align}
+    All of this gives us following expression for Boltzmann equation
+    \begin{equation}
+     \frac{\partial f}{\partial t} = f_0 - f - 
+     \left ( E + \frac{\hbar B}{dm}\phi_y \right ) \frac{\partial f}{\partial\phi_{x}}+
+     \frac{\Delta_1 dB}{2\hbar}\text{sin}(\phi_x) \frac{\partial f}{\partial\phi_{y}}
+    \end{equation}
+    and with following substitution 
+    \begin{equation}
+     B\to\frac{dmB}{\hbar}
+    \end{equation}
+    we get our final equation, with which we will be working
+    \begin{equation}\label{eq:boltzmann_dimmensionless}
+     \boxed{
+     \frac{\partial f}{\partial t} = f_0 - f - 
+     \left ( E + B\phi_y \right ) \frac{\partial f}{\partial\phi_{x}}+
+     \alpha B\text{sin}(\phi_x) \frac{\partial f}{\partial\phi_{y}}}
+    \end{equation}
+    where
+    \begin{equation}
+     \alpha=\frac{\Delta_{1}d^{2}m}{2\hbar^2}
+    \end{equation}
+    in notation used by Timo $\alpha$ is $m/m_*$, where $m_*$ is effective mass. We can identify several edge cases here
+    \begin{enumerate}
+     \item[a.]
+      $E=0, B\ne 0$
+     \item[b.]
+      $E\gg B$
+     \item[c.]
+      $B\gg E$
+    \end{enumerate}
+  \section{Numerical solution}
+  Converting (\ref{eq:boltzmann_dimmensionless}) to equation in finite differences we get
+  \begin{align}
+   f^{j+1}_{m,n}=\Delta t\cdot f_0 (m,n)+& \frac{1}{4}\left ( f^j_{m-1,n} + f^j_{m+1,n} + f^j_{m,n-1} + f^j_{m,n+1} \right )(1-\Delta t) \nonumber \\
+    -\left ( E(j) + B\phi_y(n)\right ) & \left ( f^j_{m+1,n} - f^j_{m-1,n} \right ) \frac{\Delta t}{2\Delta\phi_x} \nonumber \\
+    +\alpha B\text{sin}(\phi_x(m)) & \left ( f^j_{m,n+1} - f^j_{m,n-1} \right )\frac{\Delta t}{2\Delta\phi_y}
+  \end{align}
+  where $f^{j\leftarrow\text{time step}}_{m,n \leftarrow\text{lattice steps along x and y axis respectively}}$ and $E$ in general is
+  a function of time which is why you see that $E$ depends on the time step. Some preliminary results are shown below.
+
+  \begin{figure}[p]
+    \centering
+    \includegraphics[width=160mm]{./f0_T=0_1.png}
+    \caption{Initial equilibrium distribution for T=0.1}
+    \label{fig:f0_plot}
+  \end{figure}
+
+  \begin{figure}[p]
+    \centering
+    \includegraphics[width=160mm]{./f_E_dc=1_E_omega=0_omega=0_B=0_T=0_1_t=9.png}
+    \caption{$E_{dc}=1$ is applied}
+    \label{fig:f0_plot}
+  \end{figure}
+  
+  \begin{figure}[p]
+    \centering
+    \includegraphics[width=160mm]{./f_E_dc=1_E_omega=0_omega=0_B=5_T=0_1_t=9.png}
+    \caption{$E_{dc}=1$ and $B=5$}
+    \label{fig:f0_plot}
+  \end{figure}
+
+\end{document}
