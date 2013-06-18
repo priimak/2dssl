@@ -19,7 +19,7 @@ const int host_M = 2559; // 2900; // 2559; // 2175;
 //ffloat host_dt = 0.000005;
 //ffloat host_dt =   0.000003;
 //ffloat host_dt =   0.000025;
-ffloat host_dt =   0.00005; //0.0001;
+ffloat host_dt =   0.0001; //0.0001;
 //ffloat host_dt =   0.0005; //0.0001;
 
 // grid step along 
