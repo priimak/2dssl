@@ -2,6 +2,7 @@
 
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy import interpolate
 
 fig  = plt.figure()
 fig.subplots_adjust(right=0.87, top=0.93, wspace=0.13, hspace=0.27)
@@ -13,7 +14,14 @@ data = np.genfromtxt('B=4/absorption_omega=2.455_E_omega=0.1_B=4_mu=216_alpha=0.
                      names=['E_dc', 'E_omega', 'omega', 'mu', 'v_dr_inst', 'A', 'NORM', 'v_y_inst', 'm_eff_inst', 'v_dr', 'v_y', 'm_eff'])
 
 ax1.plot(data['E_dc'], data['v_dr'], color='r', lw=2, label='v_dr')
-ax1.fill_between(data['E_dc'], data['v_dr'], 0, interpolate=True, where=data['v_dr']<0, color='#ff0000', alpha=0.3)
+
+# fill in region where derivative of v_dr(E_dc) is negative
+v_dr_interpolated = interpolate.splrep(data['E_dc'], data['v_dr'], s=0)
+xnew = np.linspace(0, 11, 400)
+ynew = interpolate.splev(xnew,v_dr_interpolated,der=1)
+v_dr_new = interpolate.splev(xnew,v_dr_interpolated,der=0)
+ax1.fill_between(xnew, v_dr_new, 0, interpolate=True, where=ynew<0, color='#ff0000', alpha=0.3)
+
 ax1.set_title('(a) $\\mu=216$')
 ax1.annotate('$<v_{dr}/v_{p}>$', xy=(7.4,0.83), xycoords='data', fontsize='large')
 ax1.set_xlim(0,11)
@@ -39,7 +47,13 @@ data = np.genfromtxt('B=4/absorption_omega=2.455_E_omega=0.1_B=4_mu=116_alpha=0.
                      names=['E_dc', 'E_omega', 'omega', 'mu', 'v_dr_inst', 'A', 'NORM', 'v_y_inst', 'm_eff_inst', 'v_dr', 'v_y', 'm_eff'])
 
 ax1.plot(data['E_dc'], data['v_dr'], color='r', lw=2, label='v_dr')
-ax1.fill_between(data['E_dc'], data['v_dr'], 0, interpolate=True, where=data['v_dr']<0, color='#ff0000', alpha=0.3)
+
+v_dr_interpolated = interpolate.splrep(data['E_dc'], data['v_dr'], s=0)
+xnew = np.linspace(0, 11, 400)
+ynew = interpolate.splev(xnew,v_dr_interpolated,der=1)
+v_dr_new = interpolate.splev(xnew,v_dr_interpolated,der=0)
+ax1.fill_between(xnew, v_dr_new, 0, interpolate=True, where=ynew<0, color='#ff0000', alpha=0.3)
+
 ax1.annotate('$<v_{dr}/v_{p}>$', xy=(7.4,0.83), xycoords='data', fontsize='large')
 ax1.set_title('(b) $\\mu=116$')
 ax1.set_xlim(0,11)
@@ -66,7 +80,13 @@ data = np.genfromtxt('B=4/absorption_omega=2.455_E_omega=0.1_B=4_mu=11.6_alpha=0
                      names=['E_dc', 'E_omega', 'omega', 'mu', 'v_dr_inst', 'A', 'NORM', 'v_y_inst', 'm_eff_inst', 'v_dr', 'v_y', 'm_eff'])
 
 ax1.plot(data['E_dc'], data['v_dr'], color='r', lw=2, label='v_dr')
-ax1.fill_between(data['E_dc'], data['v_dr'], 0, interpolate=True, where=data['v_dr']<0, color='#ff0000', alpha=0.3)
+
+v_dr_interpolated = interpolate.splrep(data['E_dc'], data['v_dr'], s=0)
+xnew = np.linspace(0, 11, 400)
+ynew = interpolate.splev(xnew,v_dr_interpolated,der=1)
+v_dr_new = interpolate.splev(xnew,v_dr_interpolated,der=0)
+ax1.fill_between(xnew, v_dr_new, 0, interpolate=True, where=ynew<0, color='#ff0000', alpha=0.3)
+
 ax1.set_title('(c) $\\mu=11.6$')
 ax1.annotate('$<v_{dr}/v_{p}>$', xy=(6.8,0.7), xycoords='data', fontsize='large')
 ax1.set_xlim(0,11)
@@ -92,7 +112,13 @@ data = np.genfromtxt('B=4/absorption_omega=2.455_E_omega=0.1_B=4_mu=1.16_alpha=0
                      names=['E_dc', 'E_omega', 'omega', 'mu', 'v_dr_inst', 'A', 'NORM', 'v_y_inst', 'm_eff_inst', 'v_dr', 'v_y', 'm_eff'])
 
 ax1.plot(data['E_dc'], data['v_dr'], color='r', lw=2, label='v_dr')
-ax1.fill_between(data['E_dc'], data['v_dr'], 0, interpolate=True, where=data['v_dr']<0, color='#ff0000', alpha=0.3)
+
+v_dr_interpolated = interpolate.splrep(data['E_dc'], data['v_dr'], s=0)
+xnew = np.linspace(0, 11, 400)
+ynew = interpolate.splev(xnew,v_dr_interpolated,der=1)
+v_dr_new = interpolate.splev(xnew,v_dr_interpolated,der=0)
+ax1.fill_between(xnew, v_dr_new, 0, interpolate=True, where=ynew<0, color='#ff0000', alpha=0.3)
+
 ax1.annotate('$<v_{dr}/v_{p}>$', xy=(6.2,0.63), xycoords='data', fontsize='large')
 ax1.set_title('(d) $\\mu=1.16$')
 ax1.set_xlim(0,11)
@@ -112,7 +138,3 @@ ax2.fill_between(data['E_dc'], data['m_eff'], 0, interpolate=True, where=data['m
 
 #plt.show()
 plt.savefig("plots/v_dr_and_m_vary_E_dc_and_mu.pdf", format="pdf")
-
-
-
-

@@ -1,0 +1,5 @@
+bin/boltzmann_solver
+bin/cn.av.cuda
+bin/cn.lf.cuda
+bin/fourier.cuda
+bin/fourier.float

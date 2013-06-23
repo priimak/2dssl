@@ -1,3 +1,6 @@
+#ifndef BOLTZMANN_CONSTANTS
+#define BOLTZMANN_CONSTANTS
+
 // superlatice period
 //#define d 0.8473488
 #define d 1.37812249052833
@@ -15,3 +18,6 @@
 
 // width of the miniband
 #define Delta_nu 1.0
+
+#endif
+

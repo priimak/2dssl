@@ -71,7 +71,7 @@ endif
 
 # Common binaries
 NVCC            ?= $(CUDA_BIN_PATH)/nvcc
-GCC             ?= g++
+GCC             ?= gcc
 
 # Extra user flags
 EXTRA_NVCCFLAGS ?= #--ptxas-options=-v # --ptx
@@ -117,33 +117,50 @@ endif
 # Target rules
 all: build
 
-build: bin/fourier.cuda bin/fourier.float bin/cn.cuda
+build: bin/fourier.cuda bin/fourier.float bin/boltzmann_solver bin/cn.lf.cuda
 
 fourier.cuda.o: src/fourier.cuda.cu src/fourier.cuda.h src/constants.h
+	@echo "\nBuilding $@" && \
 	$(NVCC) $(NVCCFLAGS) $(EXTRA_NVCCFLAGS) -I$(CUDA_INC_PATH) $(GENCODE_FLAGS) -DT_EXT=$(T) -o $@ -c src/fourier.cuda.cu
 
 bin/fourier.cuda: fourier.cuda.o
 	$(GCC) $(CCFLAGS) -o $@ $+ $(LDFLAGS) $(EXTRA_LDFLAGS) && rm -f fourier.cuda.o
 
 fourier.float.o: src/fourier.float.cuda.cu src/fourier.cuda.h src/constants.h
+	@echo "\nBuilding $@" && \
 	$(NVCC) $(NVCCFLAGS) $(EXTRA_NVCCFLAGS) -I$(CUDA_INC_PATH) $(GENCODE_FLAGS) -DT_EXT=$(T) -o $@ -c src/fourier.float.cuda.cu
 
 bin/fourier.float: fourier.float.o
 	$(GCC) $(CCFLAGS) -o $@ $+ $(LDFLAGS) $(EXTRA_LDFLAGS) && rm -f fourier.float.o
 
-
 cn.cuda.o: src/cn.cuda.cu src/fourier.cuda.h src/constants.h
+	@echo "\nBuilding $@" && \
 	$(NVCC) $(NVCCFLAGS) $(EXTRA_NVCCFLAGS) -I$(CUDA_INC_PATH) $(GENCODE_FLAGS) -DT_EXT=$(T) -o $@ -c src/cn.cuda.cu
 
 bin/cn.cuda: cn.cuda.o
 	$(GCC) $(CCFLAGS) -o $@ $+ $(LDFLAGS) $(EXTRA_LDFLAGS) && rm -f cn.cuda.o
 
 cn.av.cuda.o: src/cn.av.cuda.cu src/fourier.cuda.h src/constants.h
+	@echo "\nBuilding $@" && \
 	$(NVCC) $(NVCCFLAGS) $(EXTRA_NVCCFLAGS) -I$(CUDA_INC_PATH) $(GENCODE_FLAGS) -DT_EXT=$(T) -o $@ -c src/cn.av.cuda.cu
 
 bin/cn.av.cuda: cn.av.cuda.o
 	$(GCC) $(CCFLAGS) -o $@ $+ $(LDFLAGS) $(EXTRA_LDFLAGS) && rm -f cn.av.cuda.o
 
+cn.lf.cuda.o: src/cn.lf.cuda.cu src/fourier.cuda.h src/constants.h
+	@echo "\nBuilding $@" && \
+	$(NVCC) $(NVCCFLAGS) $(EXTRA_NVCCFLAGS) -I$(CUDA_INC_PATH) $(GENCODE_FLAGS) -DT_EXT=$(T) -o $@ -c src/cn.lf.cuda.cu
+
+bin/cn.lf.cuda: cn.lf.cuda.o
+	$(GCC) $(CCFLAGS) -o $@ $+ $(LDFLAGS) $(EXTRA_LDFLAGS) && rm -f cn.lf.cuda.o
+
+
+src/boltzmann_gpu.o: src/boltzmann_gpu.cu src/boltzmann_gpu.h
+	@echo "\nBuilding $@" && \
+	$(NVCC) $(NVCCFLAGS) $(EXTRA_NVCCFLAGS) -I$(CUDA_INC_PATH) $(GENCODE_FLAGS) -DT_EXT=$(T) -o $@ -c src/boltzmann_gpu.cu
+
+bin/boltzmann_solver: src/boltzmann_gpu.o src/boltzmann_cli.c src/boltzmann_cli.h src/boltzmann.h src/boltzmann_solver.c src/boltzmann_solver.h
+	$(GCC) $(CCFLAGS) -std=gnu99 -o $@ $+ $(LDFLAGS) $(EXTRA_LDFLAGS) -I$(CUDA_INC_PATH) && rm -f src/boltzmann_gpu.o    
 
 clean:
-	rm -f bin/fourier.cuda bin/fourier.float ignatov_cuda.o; find . -type f -name '*~' -exec rm -f {} \;
+	rm -f bin/boltzmann_solver bin/fourier.cuda bin/fourier.float ignatov_cuda.o; find . -type f -name '*~' -exec rm -f {} \;
