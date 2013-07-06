@@ -11,20 +11,29 @@
 \usepackage{color}
 \usepackage{datetime}
 \usepackage{fullpage}
+\usepackage{tikz}
+\usepackage{caption}
 \DeclareGraphicsExtensions{.pdf,.png,.jpg,.eps} 
 \author{Dmitri Priimak}
 \title{Boltzmann equation in 2D SSL with cross magnetic and electric fields}
 \begin{document}
+\newcommand{\ddx}[2] {
+	\frac{\text{d}#1}{\text{d}#2}
+}
+\newcommand{\ddt}[1] {
+	\frac{\text{d}#1}{\text{d}t}
+}
+\newcommand{\dtwodt}[1] {
+	\frac{\text{d}^{2}#1}{\text{d}t^{2}}
+}
  \begin{center}
   \underline{Boltzmann equation in 2D SSL with cross magnetic and electric fields}
  \end{center}
   \begin{center}
-    \underline{Rev. 8}
+    \underline{Rev. 10}
   \end{center}
   \section{Analytical treatment}
-  A semiconductor super-lattice (SSL) is a very promising system plagued since its interception by Esaki and Tsu.
-  
-  We start from following Boltzmann equation
+	We start from following Boltzmann equation
     \begin{equation}\label{eq:boltzmann}
      \frac{\partial f}{\partial t}+
      \frac{e}{\hbar}\left ( \mathbf{E} + \mathbf{v}\times\mathbf{B} \right ) \frac{\partial f}{\partial\mathbf{k}}+
@@ -172,7 +181,7 @@
 	\end{equation}
 	In general we will be applying a/c emf in the form 
 	\begin{equation}
-	\tilde{E}=\tilde{E}_{dc}+\tilde{E}_{\omega}\cos(\omega t)
+	\tilde{E}=\tilde{E}_{dc}+\tilde{E}_{\omega}\cos(\omega t)\label{eq:tilde_E_as_a_function_of_time}
 	\end{equation}
 	and in case when magnetic field is not applied we also have analitic expression for $v_{dr}$, which is known as "Tien-Gordon" equation. Analytic expression, "Taker formulae", is also known for absorption, which we will define like this
 	\begin{equation}
@@ -283,15 +292,59 @@
 	   1 & : n\ne 1
 	  \end{cases}
 	\end{equation}
-	The quantity we are most intersted is absorption defined like this
-
+    \section{Correspondence with classical pendilum}
+    In the limit where dissipation is absent instead of Boltzmann
+    equation we can use semiclassical equations of motion working 
+    individual electrons. Such situation corresponds to $\tau=\infty$ and initial shape of $f(\phi_x,\phi_x)$ being delta function. 
+    \begin{align}
+    	\hbar\frac{\text{d}\mathbf{k}}{\text{d}t}=&e\mathbf{E}+e\mathbf{v}\times\mathbf{B} \\
+    	\mathbf{v}(\mathbf{k})=&\frac{1}{\hbar}\frac{\partial\varepsilon}{\partial\mathbf{k}}
+    \end{align}
+    And in view of specific values of $\mathbf{E}$, $\mathbf{B}$ and $\varepsilon$ that we are using in our problem, these equations transform into following
+    \begin{align}
+	    \ddt{\phi_x}=&\tilde{E}+\tilde{B}\phi_y \label{eq:semi_classical_phi_x_dot} \\
+	    \ddt{\phi_y}=&-\tilde{B}\sin(\phi_x) \label{eq:semi_classical_phi_y_dot}
+    \end{align}
+    And taking second derivative of (\ref{eq:semi_classical_phi_x_dot}), assuming that $\tilde{E}$ is defined by (\ref{eq:tilde_E_as_a_function_of_time}) we arrive to second order ODE, which correspond to classical externally driven pendilum.
+    \begin{equation}
+    	\dtwodt{\phi_x}+\tilde{B}^2\sin(\phi_x)=-\omega\tilde{E}_\omega\sin(\omega t)
+    \end{equation}
+    In general this equation can exibit very complicated behaviour and even chaos, but can be solved in the simplest case when $\tilde{E}_\omega=0$, in which case peroid of oscillation is defined by magnetic field $\tilde{B}$ and electric field $\tilde{E}$, which sets initial velocity of $\phi_x$, i.e. $\ddt{\phi_x}$ at $t=0$, assuming that $\phi_x$ and $\phi_y$ at $t=0$ are also $0$. In case of $E_\omega=0$ we exact correspondence of our system to a classical pendilum, for which 
+    we do have conservation of energy.
+    \begin{equation}
+    \frac{1}{2}\left ( \ddt{\phi_x} \right  )^2+2\tilde{B}^2\sin^2(\phi_x/2)=E_{total}
+    \end{equation}
+    If we define $E_p=2\tilde{B}^2$, which corresponds to 
+    "peak" then when $E_{total}=E_p$ then such pendilum can reach 
+    inverted position. When $\phi_x$ and $\phi_y$ are equal zero 
+    $E_{total}=\tilde{E}_{dc}^2/2$ and thus for $E_p$ there is 
+    corresponding $E_{sx}=2\tilde{B}$, which defines separatrix dividing
+    motion of the pendilum between vibrational 
+    ( $\tilde{E}_{dc}<E_{sx}$ ) and 
+    rotational ( $\tilde{E}_{dc}>E_{sx}$ ).
+    When our system gives peak of negative absorption corresponding 
+    to the first and second cases we speak of "Cycloron" and 
+    "Bloch" resonances respectively. Expresion for frequency 
+    $\Omega$ of these natural oscilations is well known and in our 
+    variables it takes form
+    \begin{alignat}{2}
+    \Omega=&\frac{\pi E_{sx}}{4\text{K}(\tilde{E}_{dc}/E_{sx})} &\qquad \text{for} \enskip \tilde{E}_{dc}<E_{sx}\\
+    \Omega=&\frac{\pi E_{dc}}{2\text{K}(E_{sx}/\tilde{E}_{dc})}
+     &\qquad \text{for} \enskip \tilde{E}_{dc}>E_{sx}
+    \end{alignat}
+    where $\text{K}(x)$ is a complete elliptic integral of the 
+    first kind.
     \section{Numerical solution}
-   	Straightforward application of method of finite differences to (\ref{eq:a_n_dot}) and (\ref{eq:b_n_dot}) leads to either unstable or difficult, i.e. computationally intensive, equations. To combat this problem I am using several methods at once.
-	First, we are going to discretize $a_{n}$ and $b_{n}$ along time and $\phi_y$ axes.
+   	Straightforward application of method of finite differences 
+   	to (\ref{eq:a_n_dot}) and (\ref{eq:b_n_dot}) leads to either 
+   	unstable or i.e. computationally intensive equations. To 
+   	combat this problem we am using several methods at once.
+	First, we are going to discretize $a_{n}$ and $b_{n}$ along 
+	time and $\phi_y$ axes.
 	\begin{equation}
 		a^{\textstyle t\leftarrow\text{time step}}_{\textstyle n,m\leftarrow \phi_y \text{lattice step}}
 	\end{equation}
-	and $n$ is "harmonic number". So, here we are going to do some tricky things. We are going to write two forms of equations (\ref{eq:a_n_dot}) and (\ref{eq:b_n_dot}).
+	and $n$ is "harmonic number". So, here we are going to do some tricky things. We are going to write two forms of equations (\ref{eq:a_n_dot}, \ref{eq:b_n_dot}).
 	One using forward differences and one using partial backward differences, i.e. on the right side of equal sign we are going to write partial derivatives at time $t$ while everything else at time $t+1$ and will follow standard procedure of Crank–Nicolson scheme by adding these two, 
 	forward and backward differences equations. First, forward differencing scheme
 	\begin{align}
@@ -333,7 +386,42 @@
 	B^t_{n,m}=&\frac{\alpha B\Delta t}{2\Delta\phi}(b^t_{n+1,m+1}-b^t_{n+1,m-1}-
 		b^t_{n-1,m+1}+b^t_{n-1,m-1})
 	\end{align}
-	Equations (\ref{eq:a_t_plus_1}) and (\ref{eq:b_t_plus_1}) allow us to step forward in time, however they are only conditionally stable because $A^t_{n,m}$ and $B^t_{n,m}$ are taken at time $t$, which means that we have to take time step $dt$ to be very, vary small. To make time step much larger without solving implicit equations, to calculate $a^{t+1}_{n,m}$ and $b^{t+1}_{n,m}$ we will do two steps. First we will use (\ref{eq:a_t_plus_1}) and (\ref{eq:b_t_plus_1}) to make a trial step and then make the same step forward now using $A^{t+1}_{n,m}$ and $B^{t+1}_{n,m}$ leaving all other parts of (\ref{eq:a_t_plus_1}), (\ref{eq:b_t_plus_1}) the same. Resulting equation is still not unconditionally stable, but it is much more relaxed as far as value of time step, which can now be taken much larger than with strightforward aplication of (\ref{eq:a_t_plus_1}) and (\ref{eq:b_t_plus_1}).
+	These equation (\ref{eq:a_t_plus_1}, \ref{eq:b_t_plus_1})can be formally written in the form
+	\begin{align}
+		\mathbf{r}^{t+1}_{n,m}=&\mathbf{T}(\mathbf{r}^t_{n,m};A^t_{n,m},B^t_{n,m}) \label{eq:time_shift} \\
+		\mathbf{r}^{t}_{n,m}=&(a^t_{n,m}, b^t_{n,m})
+	\end{align}
+	Where $\mathbf{T}$ is an operator that allows us to step from time step $t$ to $t+1$, separated by time interval $\Delta t$. Using this operation as is leads to, only, conditionally stable numerical system, because $A^t_{n,m}$ and $B^t_{n,m}$ are taken at time $t$, which means that we have to take time step $dt$ to be very, very small. To make time step much larger without solving implicit equations, to calculate $a^{t+1}_{n,m}$ and $b^{t+1}_{n,m}$ we will utilize variation of leap-frog method, by using two staggered girds.
+	\begin{minipage}{\linewidth}
+	\makebox[\linewidth]{
+	\begin{tikzpicture}[]
+		\draw[<-,ultra thick] (0.1,0.2) to [out=60,in=120] (3.9,0.2);
+		\draw[<-,ultra thick] (2.1,-0.2) to [out=-70,in=-110] (5.9,-0.2);
+		\draw[<-,ultra thick] (4.1,0.2) to [out=60,in=120] (7.9,0.2);
+		\draw[<-,ultra thick] (6.1,-0.2) to [out=-70,in=-110] (9.9,-0.2);
+		\draw[fill] (0, 0) circle [radius=0.1];
+		\draw[fill] (2, 0) circle [radius=0.1];
+		\draw[fill] (4, 0) circle [radius=0.1];
+		\draw[fill] (6, 0) circle [radius=0.1];
+		\draw[fill] (8, 0) circle [radius=0.1];
+		\draw[fill] (10, 0) circle [radius=0.1];
+		\node [right] at (0.1,0) {t+5/2};
+		\node [right] at (2.1,0) {t+2};
+		\node [right] at (4.1,0) {t+3/2};
+		\node [right] at (6.1,0) {t+1};
+		\node [right] at (8.1,0) {t+1/2};
+		\node [right] at (10.1,0) {t};	
+		\end{tikzpicture}
+	}
+	\captionof{figure}{}
+	\label{fig:time_grid}
+	\end{minipage}
+	And writing (\ref{eq:time_shift}) in the form
+	\begin{align}
+		\mathbf{r}^{t+1}_{n,m}=&\mathbf{T}(\mathbf{r}^t_{n,m};A^{t+1/2}_{n,m},B^{t+1/2}_{n,m}) \label{eq:leap_frog_shift_1} \\
+		\mathbf{r}^{t+3/2}_{n,m}=&\mathbf{T}(\mathbf{r}^{t+1/2}_{n,m};A^{t+1}_{n,m},B^{t+1}_{n,m}) \label{eq:leap_frog_shift_2}
+	\end{align}
+	Use of equations (\ref{eq:leap_frog_shift_1}) and (\ref{eq:leap_frog_shift_2}) is indicated by lower and upper arrows in fig \ref{fig:time_grid}. To start this system we calculate $\mathbf{r}^{1/2}_{n,m}$ by using eq. (\ref{eq:time_shift}) and then shift to leap-frog method.
 	\newpage
 	\pagenumbering{gobble}
 	\begin{figure}[t]
@@ -440,21 +528,35 @@
 	  \label{fig:positive_absorption_time_plot_zoom}
 	  \caption{}
 	\end{figure}	
-	\newpage
-	
+	\newpage	
 	\begin{figure}[t]
 	  \centering
 	  \normalsize % use normal font size in the figure
 	  \includegraphics[scale=0.7]{plots/v_dr_and_m_vary_E_dc_and_mu.pdf}
 	  \caption{$E_\omega=0.1$, $\omega=2.455$, $B=4$, $\alpha=0.9496$, $\mu=[1.16, 11.6, 116, 216]$}
-	  \label{fig:effect_of_temperature_in_v_dr_vary_E_dc}	  
+	  \label{fig:effect_of_temperature_in_v_dr_vary_E_dc_omega=2.455}	  
 	\end{figure}	
 	\begin{figure}[H]
 	  \centering
 	  \normalsize % use normal font size in the figure
 	  \includegraphics[scale=0.7]{plots/A_and_m_vary_E_dc_and_mu.pdf}
 	  \caption{$E_\omega=0.1$, $\omega=2.455$, $B=4$, $\alpha=0.9496$, $\mu=[1.16, 11.6, 116, 216]$}
-	  \label{fig:effect_of_temperature_in_A_vary_E_dc}
+	  \label{fig:effect_of_temperature_in_A_vary_E_dc_omega=2.455}
+	\end{figure}	
+	\newpage	
+	\begin{figure}[t]
+	  \centering
+	  \normalsize % use normal font size in the figure
+	  \includegraphics[scale=0.7]{plots/v_dr_and_m_vary_E_dc_and_mu_omega=4.pdf}
+	  \caption{$E_\omega=0.1$, $\omega=4$, $B=4$, $\alpha=0.9496$, $\mu=[1.16, 11.6, 116, 216]$}
+	  \label{fig:effect_of_temperature_in_v_dr_vary_E_dc_omega=4}	  
+	\end{figure}	
+	\begin{figure}[H]
+	  \centering
+	  \normalsize % use normal font size in the figure
+	  \includegraphics[scale=0.7]{plots/A_and_m_vary_E_dc_and_mu_omega=4.pdf}
+	  \caption{$E_\omega=0.1$, $\omega=4$, $B=4$, $\alpha=0.9496$, $\mu=[1.16, 11.6, 116, 216]$}
+	  \label{fig:effect_of_temperature_in_A_vary_E_dc_omega=4}
 	\end{figure}	
 \end{document}
   

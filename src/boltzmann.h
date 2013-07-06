@@ -3,7 +3,7 @@
 
 #define TH_PER_BLOCK 512
 
-#define ffloat double 
+#define ffloat float 
 
 #endif
 

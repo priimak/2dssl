@@ -52,7 +52,40 @@ char *out_file = (char *)"-";
 // actual output file handle
 FILE *out = NULL;
 
+// if set when computation cycle is done the solver will not quit, but will try to read 
+// from read_from file handle to set one of the common computational parameters, such as E_dc etc.,
+// as well as timeout parameter, intent of which is to give time for relaxation to a new 
+// parameter set 
+FILE *read_from = NULL;
+
+extern ffloat host_dt;
+extern int host_M;
+
+// scan for new parameter from read_from file stream
+ffloat scan_for_new_parameters() {
+  char name[80];
+  ffloat value, timeout;
+  for(;;) {
+    int pcount = fscanf(read_from, "%s %lf %lf", name, &value, &timeout);
+    if( pcount == 1 && streq(name,"exit") ) {
+      return -999; // this will indicate complete exit from computation
+    }
+    if( pcount != 3 ) { continue; }
+
+    // only following parameters, one at a time, can be set
+    if( streq(name, "E_dc")        ) { host_E_dc    = value; } else
+    if( streq(name, "E_omega")     ) { host_E_omega = value; } else
+    if( streq(name, "omega")       ) { host_omega   = value; } else
+    if( streq(name, "mu")          ) { host_mu      = value; } else
+    if( streq(name, "alpha")       ) { host_alpha   = value; } else
+    if( streq(name, "B")           ) { host_B       = value; }
+
+    return timeout;
+  }
+} // scan_for_new_parameters()
+
 void parse_cmd(int argc, char **argv) {
+  char *rf_name = NULL;
   char *separator = (char *)"=";
   char *name  = NULL;
   char *value = NULL;
@@ -74,7 +107,10 @@ void parse_cmd(int argc, char **argv) {
     if( streq(name, "PhiYmax")     ) { PhiYmax      = strtod(value,  NULL); } else
     if( streq(name, "B")           ) { host_B       = strtod(value,  NULL); } else
     if( streq(name, "t-max")       ) { t_start      = strtod(value,  NULL); } else
-    if( streq(name, "o")           ) { out_file     = strdup(value); }
+    if( streq(name, "dt")          ) { host_dt      = strtod(value,  NULL); } else
+    if( streq(name, "g-grid")      ) { host_M       = atoi(value);          } else
+    if( streq(name, "read-from")   ) { rf_name      = strdup(value);        } else
+    if( streq(name, "o")           ) { out_file     = strdup(value);        }
   }
 
   if( display < -900 ) { fprintf(stderr, "ERROR: Parameter \"display\" must be set.\n");  exit(EXIT_FAILURE); }
@@ -104,6 +140,16 @@ void parse_cmd(int argc, char **argv) {
   if( t_start <= 0 ) {
       fprintf(stderr, "ERROR: Invalid value of t-max= parameter. it must be greater than 0.\n");
       exit(EXIT_FAILURE);
+  }
+  
+  // read additional parameters from rf_name
+  if( rf_name != NULL ) {
+    if( streq(rf_name, "stdin") ) { 
+      read_from = stdin;
+    } else {
+      fprintf(stderr, "ERROR: Invalid value of read-from=\n");
+      exit(EXIT_FAILURE);    
+    }
   }
 
   // try to open output file

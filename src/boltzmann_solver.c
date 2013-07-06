@@ -23,7 +23,6 @@
     cudaFree(av_data); \
   } while(0)
 
-ffloat *populate_initial_distribution(void);
 ffloat eval_norm(ffloat *, ffloat, int);
 void print_time_evolution_of_parameters(FILE *, ffloat, ffloat *, ffloat *, int, 
                                         ffloat, ffloat, ffloat, ffloat, 
@@ -34,7 +33,7 @@ extern int display, host_N;
 extern ffloat host_E_dc, host_E_omega, host_omega, host_mu, host_alpha, 
   PhiYmin, PhiYmax, host_B, t_start;
 extern char  *out_file;
-extern FILE  *out;
+extern FILE  *out, *read_from;
 
 ffloat t_max = -999; // calculation stops at this time
 
@@ -43,7 +42,7 @@ ffloat host_dPhi = 0;
 
 // grid from 0 to PhiY_max_range is broken into host_M steps
 // change it here if you need more resolution along \phi_y axis
-const int host_M = 3069;
+int host_M = 3069;
 
 // array sizes will be derived from host_M variable; following variables holds 
 // various sizes related to be allocated arrays
@@ -97,7 +96,6 @@ int main(int argc, char **argv) {
 
   load_data();
 
-  //ffloat *host_a0 = populate_initial_distribution();
   // create a0 and populate it with f0
   ffloat *host_a0; host_a0 = (ffloat *)calloc(SIZE_2D, sizeof(ffloat));
   for( int n=0; n<host_N+1; n++ ) {
@@ -168,144 +166,151 @@ int main(int argc, char **argv) {
   HANDLE_ERROR(cudaMemset((void *)av_data, 0, 5*sizeof(ffloat)));
 
   float t_hs = 0;
-  for( ffloat t = 0; t < t_max; t += host_dt ) {
-    t_hs = t + host_dt/2;
-    cos_omega_t = cos(host_omega*t);
-    cos_omega_t_plus_dt = cos(host_omega*(t+host_dt));
-    step_on_grid(blocks, a0, a[current], b[current], a[next], b[next], a[current_hs], 
-                 b[current_hs], t, t_hs, 
-                 cos_omega_t, cos_omega_t_plus_dt);
 
-    cudaThreadSynchronize();
+  ffloat t0 = 0;
+  ffloat t = t0;
+  ffloat timeout = -999;
+  for(;;) {
+    //read_from
+    for( t = t0; t < t_max; t += host_dt ) {
+      t_hs = t + host_dt/2;
+      cos_omega_t = cos(host_omega*t);
+      cos_omega_t_plus_dt = cos(host_omega*(t+host_dt));
+      step_on_grid(blocks, a0, a[current], b[current], a[next], b[next], a[current_hs], 
+                   b[current_hs], t, t_hs, 
+                   cos_omega_t, cos_omega_t_plus_dt);
 
-    cos_omega_t = cos(host_omega*t_hs);
-    cos_omega_t_plus_dt = cos(host_omega*(t_hs+host_dt));
-    step_on_half_grid(blocks, a0, a[current], b[current], a[next], b[next], a[current_hs], 
-                      b[current_hs], a[next_hs], b[next_hs], t, t_hs, 
-                      cos_omega_t, cos_omega_t_plus_dt);
+      cudaThreadSynchronize();
 
-    if( host_E_omega > 0 && display == 77 && frame_time >= 0.01) {
-      // we need to perform averaging of v_dr, m_x and A
-      av(blocks, a[next], b[next], av_data, t);
-      HANDLE_ERROR(cudaMemcpy(host_a, a[current], SIZE_2Df, cudaMemcpyDeviceToHost));
-      HANDLE_ERROR(cudaMemcpy(host_b, b[current], SIZE_2Df, cudaMemcpyDeviceToHost));
-      HANDLE_ERROR(cudaMemcpy(host_av_data, av_data, 5*sizeof(ffloat), cudaMemcpyDeviceToHost));
-      ffloat norm = eval_norm(host_a, host_alpha, MSIZE);
-      print_time_evolution_of_parameters(out, norm, host_a, host_b, MSIZE, 
-                                         host_mu, host_alpha, host_E_dc, host_E_omega, host_omega,
-                                         host_av_data, t);
-      frame_time = 0;
-    }
+      cos_omega_t = cos(host_omega*t_hs);
+      cos_omega_t_plus_dt = cos(host_omega*(t_hs+host_dt));
+      step_on_half_grid(blocks, a0, a[current], b[current], a[next], b[next], a[current_hs], 
+                        b[current_hs], a[next_hs], b[next_hs], t, t_hs, 
+                        cos_omega_t, cos_omega_t_plus_dt);
 
-    if( host_E_omega > 0 && display != 7 && display != 77 && t >= t_start ) {
-      // we need to perform averaging of v_dr, m_x and A
-      av(blocks, a[next], b[next], av_data, t);
-    }
-
-    if( current    == 0 ) {    current = 1;    next = 0; } else { current = 0; next = 1; }
-    if( current_hs == 2 ) { current_hs = 3; next_hs = 2; } else { current_hs = 2; next_hs = 3; }
-
-    if( display == 7 && frame_time >= 0.01 ) { // we are making movie
-      HANDLE_ERROR(cudaMemcpy(host_a, a[current], SIZE_2Df, cudaMemcpyDeviceToHost));
-      HANDLE_ERROR(cudaMemcpy(host_b, b[current], SIZE_2Df, cudaMemcpyDeviceToHost));
-      sprintf(file_name_buf, "frame%08d.data", frame_number++);
-      FILE *frame_file_stream = fopen(file_name_buf, "w");
-      setvbuf(frame_file_stream, buf, _IOFBF, sizeof(buf));
-      printf("\nWriting frame %s\n", file_name_buf);
-      print_2d_data(frame_file_stream, MSIZE, host_a0, host_a, host_b, host_alpha);
-      fclose(frame_file_stream);
-      frame_time=0;
-    }
-
-    if( out != stdout && display != 7 ) {
-      step++;
-      if( step == 100 ) {
-        printf("\rt=%0.9f %0.2f%%", t, t/t_max*100);
-        fflush(stdout);
-        step = 0;
+      if( host_E_omega > 0 && display == 77 && frame_time >= 0.01) {
+        // we need to perform averaging of v_dr, m_x and A
+        av(blocks, a[next], b[next], av_data, t);
+        HANDLE_ERROR(cudaMemcpy(host_a, a[current], SIZE_2Df, cudaMemcpyDeviceToHost));
+        HANDLE_ERROR(cudaMemcpy(host_b, b[current], SIZE_2Df, cudaMemcpyDeviceToHost));
+        HANDLE_ERROR(cudaMemcpy(host_av_data, av_data, 5*sizeof(ffloat), cudaMemcpyDeviceToHost));
+        ffloat norm = eval_norm(host_a, host_alpha, MSIZE);
+        print_time_evolution_of_parameters(out, norm, host_a, host_b, MSIZE, 
+                                           host_mu, host_alpha, host_E_dc, host_E_omega, host_omega,
+                                           host_av_data, t);
+        frame_time = 0;
       }
-    }
-    frame_time += host_dt;
-  }
 
-  HANDLE_ERROR(cudaMemcpy(host_a, a[current], SIZE_2Df, cudaMemcpyDeviceToHost));
-  HANDLE_ERROR(cudaMemcpy(host_b, b[current], SIZE_2Df, cudaMemcpyDeviceToHost));
-  HANDLE_ERROR(cudaMemcpy(host_av_data, av_data, 5*sizeof(ffloat), cudaMemcpyDeviceToHost));
+      if( host_E_omega > 0 && display != 7 && display != 77 && t >= t_start ) {
+        // we need to perform averaging of v_dr, m_x and A
+        av(blocks, a[next], b[next], av_data, t);
+      }
 
-  ffloat norm = 0;
-  for( int m = 1; m < 2*host_M+2; m++ ) {
-    norm += nm(host_a,0,m)*host_dPhi;
-  }
-  norm *= 2*PI*sqrt(host_alpha);
+      if( current    == 0 ) {    current = 1;    next = 0; } else { current = 0; next = 1; }
+      if( current_hs == 2 ) { current_hs = 3; next_hs = 2; } else { current_hs = 2; next_hs = 3; }
 
-  if( display == 3 ) {
-    for( ffloat phi_x = -PI; phi_x < PI; phi_x += 0.04 ) {
-      for( int m = 1; m < 2*host_M+2; m++ ) {
-        ffloat value = 0;
-        ffloat value0 = 0;
-        for( int n = 0; n < host_N+1; n++ ) {
-          value  += nm(host_a,n,m)*cos(n*phi_x) + nm(host_b,n,m)*sin(n*phi_x);
-          value0 += nm(host_a0,n,m)*cos(n*phi_x);
+      if( display == 7 && frame_time >= 0.01 ) { // we are making movie
+        HANDLE_ERROR(cudaMemcpy(host_a, a[current], SIZE_2Df, cudaMemcpyDeviceToHost));
+        HANDLE_ERROR(cudaMemcpy(host_b, b[current], SIZE_2Df, cudaMemcpyDeviceToHost));
+        sprintf(file_name_buf, "frame%08d.data", frame_number++);
+        FILE *frame_file_stream = fopen(file_name_buf, "w");
+        setvbuf(frame_file_stream, buf, _IOFBF, sizeof(buf));
+        printf("\nWriting frame %s\n", file_name_buf);
+        print_2d_data(frame_file_stream, MSIZE, host_a0, host_a, host_b, host_alpha);
+        fclose(frame_file_stream);
+        frame_time=0;
+      }
+
+      if( out != stdout && display != 7 ) {
+        step++;
+        if( step == 100 ) {
+          printf("\rt=%0.9f %0.2f%%", t, t/t_max*100);
+          fflush(stdout);
+          step = 0;
         }
-        fprintf(out, "%0.5f %0.5f %0.20f %0.20f\n", phi_x, phi_y(m), value<0?0:value, value0<0?0:value0);
       }
+      frame_time += host_dt;
     }
-    fprintf(out, "# norm=%0.20f\n", norm);
-    printf("# norm=%0.20f\n", norm);
-    //if( out != stdout ) { fclose(out); }
-    cuda_clean_up();
-    return EXIT_SUCCESS;
-  }
 
-  if( display == 4 ) {
-    printf("\n# norm=%0.20f\n", norm);
-    ffloat v_dr_inst = 0 ;
-    ffloat v_y_inst = 0;
-    ffloat m_over_m_x_inst = 0;
+    HANDLE_ERROR(cudaMemcpy(host_a, a[current], SIZE_2Df, cudaMemcpyDeviceToHost));
+    HANDLE_ERROR(cudaMemcpy(host_b, b[current], SIZE_2Df, cudaMemcpyDeviceToHost));
+    HANDLE_ERROR(cudaMemcpy(host_av_data, av_data, 5*sizeof(ffloat), cudaMemcpyDeviceToHost));
+
+    ffloat norm = 0;
     for( int m = 1; m < 2*host_M+2; m++ ) {
-      v_dr_inst += nm(host_b,1,m)*host_dPhi;
-      v_y_inst  += nm(host_a,0,m)*phi_y(m)*host_dPhi;
-      m_over_m_x_inst += nm(host_a,1,m)*host_dPhi;
+      norm += nm(host_a,0,m)*host_dPhi;
+    }
+    norm *= 2*PI*sqrt(host_alpha);
+
+    if( display == 3 ) {
+      for( ffloat phi_x = -PI; phi_x < PI; phi_x += 0.01 ) {
+        for( int m = 1; m < host_M; m++ ) {
+          ffloat value = 0;
+          ffloat value0 = 0;
+          for( int n = 0; n < host_N+1; n++ ) {
+            value  += nm(host_a,n,m)*cos(n*phi_x) + nm(host_b,n,m)*sin(n*phi_x);
+            value0 += nm(host_a0,n,m)*cos(n*phi_x);
+          }
+          fprintf(out, "%0.5f %0.5f %0.20f %0.20f\n", phi_x, phi_y(m), value<0?0:value, value0<0?0:value0);
+        }
+      }
+      fprintf(out, "# norm=%0.20f\n", norm);
+      printf("# norm=%0.20f\n", norm);
+      //if( out != stdout ) { fclose(out); }
+      cuda_clean_up();
+      return EXIT_SUCCESS;
     }
 
-    ffloat v_dr_multiplier = 2*gsl_sf_bessel_I0(host_mu)*PI*sqrt(host_alpha)/gsl_sf_bessel_In(1, host_mu);
-    ffloat v_y_multiplier  = 4*PI*gsl_sf_bessel_I0(host_mu)/gsl_sf_bessel_In(1, host_mu);
-    ffloat m_over_multiplier = PI*host_alpha*sqrt(host_alpha);
-    v_dr_inst       *= v_dr_multiplier;
-    v_y_inst        *= v_y_multiplier;
-    m_over_m_x_inst *= m_over_multiplier;
+    if( display == 4 ) {
+      printf("\n# norm=%0.20f\n", norm);
+      ffloat v_dr_inst = 0 ;
+      ffloat v_y_inst = 0;
+      ffloat m_over_m_x_inst = 0;
+      for( int m = 1; m < host_M; m++ ) {
+        v_dr_inst += nm(host_b,1,m)*host_dPhi;
+        v_y_inst  += nm(host_a,0,m)*phi_y(m)*host_dPhi;
+        m_over_m_x_inst += nm(host_a,1,m)*host_dPhi;
+      }
 
-    host_av_data[1] *= v_dr_multiplier;
-    host_av_data[2] *= v_y_multiplier;
-    host_av_data[3] *= m_over_multiplier;
-    host_av_data[4] *= v_dr_multiplier;
-    host_av_data[4] /= T;
-    
-    fprintf(out, "#E_{dc}                \\tilde{E}_{\\omega}     \\tilde{\\omega}         mu                     v_{dr}/v_{p}         A(\\omega)              NORM     v_{y}/v_{p}    m/m_{x,k}   <v_{dr}/v_{p}>   <v_{y}/v_{p}>    <m/m_{x,k}>\n");
-    fprintf(out, "%0.20f %0.20f %0.20f %0.20f %0.20f %0.20f %0.20f %0.20f %0.20f %0.20f %0.20f %0.20f\n", 
-            host_E_dc, host_E_omega, host_omega, host_mu, v_dr_inst, host_av_data[4], norm, v_y_inst, 
-            m_over_m_x_inst, host_av_data[1], host_av_data[2], host_av_data[3]);
-    if( out != stdout ) {
-      fclose(out);
+      ffloat v_dr_multiplier = 2*gsl_sf_bessel_I0(host_mu)*PI*sqrt(host_alpha)/gsl_sf_bessel_In(1, host_mu);
+      ffloat v_y_multiplier  = 4*PI*gsl_sf_bessel_I0(host_mu)/gsl_sf_bessel_In(1, host_mu);
+      ffloat m_over_multiplier = PI*host_alpha*sqrt(host_alpha);
+      v_dr_inst       *= v_dr_multiplier;
+      v_y_inst        *= v_y_multiplier;
+      m_over_m_x_inst *= m_over_multiplier;
+
+      host_av_data[1] *= v_dr_multiplier;
+      host_av_data[2] *= v_y_multiplier;
+      host_av_data[3] *= m_over_multiplier;
+      host_av_data[4] *= v_dr_multiplier;
+      host_av_data[4] /= T;
+
+      fprintf(out, "#E_{dc}                \\tilde{E}_{\\omega}     \\tilde{\\omega}         mu                     v_{dr}/v_{p}         A(\\omega)              NORM     v_{y}/v_{p}    m/m_{x,k}   <v_{dr}/v_{p}>   <v_{y}/v_{p}>    <m/m_{x,k}>\n");
+      fprintf(out, "%0.20f %0.20f %0.20f %0.20f %0.20f %0.20f %0.20f %0.20f %0.20f %0.20f %0.20f %0.20f\n", 
+              host_E_dc, host_E_omega, host_omega, host_mu, v_dr_inst, host_av_data[4], norm, v_y_inst, 
+              m_over_m_x_inst, host_av_data[1], host_av_data[2], host_av_data[3]);
     }
-    cuda_clean_up();
-    return EXIT_SUCCESS;
+
+    if( read_from == NULL ) { break; }
+
+    // scan for new parameters
+    timeout = scan_for_new_parameters();
+    if( timeout < -900 ) { break; } // user entered 'exit'
+    t_start = t + timeout;
+    t_max = t_start + T;
+    t0 = t + host_dt;
+    T=host_omega>0?(2*PI/host_omega):0;
+    load_data(); // re-load data
+    HANDLE_ERROR(cudaMemset((void *)av_data, 0, 5*sizeof(ffloat))); // clear averaging data
+    printf("# t_max = %0.20f\n", t_max);
+  } // for(;;)
+
+  if( out != NULL && out != stdout ) {
+    fclose(out);
   }
-
   cuda_clean_up();
   return EXIT_SUCCESS;
 } // end of main(...)
-
-ffloat *populate_initial_distribution(void) {
-  // create a0 and populate it with f0
-  ffloat *host_a0; host_a0 = (ffloat *)calloc(SIZE_2D, sizeof(ffloat));
-  for( int n=0; n<host_N+1; n++ ) {
-    ffloat a = gsl_sf_bessel_In(n, host_mu)*(n==0?0.5:1)/(PI*gsl_sf_bessel_In(0, host_mu))*sqrt(host_mu/(2*PI*host_alpha));
-    for( int m = 0; m < 2*host_M+3; m++ ) {
-      nm(host_a0, n, m) = a*expl(-host_mu*pow(phi_y(m),2)/2);
-    }
-  }
-}
 
 ffloat eval_norm(ffloat *host_a, ffloat host_alpha, int MSIZE) {
   ffloat norm = 0;
