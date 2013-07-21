@@ -14,7 +14,8 @@ gnuplot gnuplot_scripts/plot_vary_omega_E_dc=7.8.gnu && \
 gnuplot_scripts/plot_v_dr_and_m_vary_E_dc.for_latex.py && \
 gnuplot_scripts/plot_A_and_m_vary_E_dc.for_latex.py && \
 gnuplot_scripts/plot_v_dr_and_m_vary_E_dc_omega=4.for_latex.py && \
-gnuplot_scripts/plot_A_and_m_vary_E_dc_omega=4.for_latex.py 
+gnuplot_scripts/plot_A_and_m_vary_E_dc_omega=4.for_latex.py && \
+gnuplot_scripts/plot2dB_maps.py
 # gnuplot_scripts/plot2dB=4_map.py
 # gnuplot_scripts/plot2dB=4_mesh.py
 

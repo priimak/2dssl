@@ -83,11 +83,11 @@ int main(int argc, char **argv) {
 
   const int NSIZE = host_N+1;
   //MSIZE = 2*host_M+3;
-  MSIZE = 2*host_M+3;
+  MSIZE = host_M+3;
   SIZE_2D = NSIZE*MSIZE;
   const int SIZE_2Df = SIZE_2D*sizeof(ffloat);
 
-  host_TMSIZE=2*host_M+1;
+  host_TMSIZE=host_M+1;
 
   host_nu = 1+host_dt/2;
   host_nu2 = host_nu * host_nu;
@@ -100,7 +100,7 @@ int main(int argc, char **argv) {
   ffloat *host_a0; host_a0 = (ffloat *)calloc(SIZE_2D, sizeof(ffloat));
   for( int n=0; n<host_N+1; n++ ) {
     ffloat a = gsl_sf_bessel_In(n, host_mu)*(n==0?0.5:1)/(PI*gsl_sf_bessel_In(0, host_mu))*sqrt(host_mu/(2*PI*host_alpha));
-    for( int m = 0; m < 2*host_M+3; m++ ) {
+    for( int m = 0; m < host_M+3; m++ ) {
       nm(host_a0, n, m) = a*expl(-host_mu*pow(phi_y(m),2)/2);
     }
   }
@@ -237,8 +237,9 @@ int main(int argc, char **argv) {
     HANDLE_ERROR(cudaMemcpy(host_av_data, av_data, 5*sizeof(ffloat), cudaMemcpyDeviceToHost));
 
     ffloat norm = 0;
-    for( int m = 1; m < 2*host_M+2; m++ ) {
-      norm += nm(host_a,0,m)*host_dPhi;
+    ffloat dphi_over_2 = host_dPhi/2.0;
+    for( int m = 1; m < host_M+1; m++ ) {
+      norm += (nm(host_a,0,m)+nm(host_a,0,m))*dphi_over_2;
     }
     norm *= 2*PI*sqrt(host_alpha);
 
@@ -285,6 +286,8 @@ int main(int argc, char **argv) {
       host_av_data[4] *= v_dr_multiplier;
       host_av_data[4] /= T;
 
+      fprintf(out, "# display=%d E_dc=%0.20f E_omega=%0.20f omega=%0.20f mu=%0.20f alpha=%0.20f n-harmonics=%d PhiYmin=%0.20f PhiYmax=%0.20f B=%0.20f t-max=%0.20f dt=%0.20f g-grid=%d\n",
+                      display,   host_E_dc,  host_E_omega,  host_omega,  host_mu,  host_alpha,  host_N,        PhiYmin,       PhiYmax,       host_B,  t_start,     host_dt,  host_M);
       fprintf(out, "#E_{dc}                \\tilde{E}_{\\omega}     \\tilde{\\omega}         mu                     v_{dr}/v_{p}         A(\\omega)              NORM     v_{y}/v_{p}    m/m_{x,k}   <v_{dr}/v_{p}>   <v_{y}/v_{p}>    <m/m_{x,k}>\n");
       fprintf(out, "%0.20f %0.20f %0.20f %0.20f %0.20f %0.20f %0.20f %0.20f %0.20f %0.20f %0.20f %0.20f\n", 
               host_E_dc, host_E_omega, host_omega, host_mu, v_dr_inst, host_av_data[4], norm, v_y_inst, 
