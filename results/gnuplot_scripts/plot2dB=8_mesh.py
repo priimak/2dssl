@@ -20,7 +20,7 @@ data = np.genfromtxt('B=8/absorption_B_is_8_E_omega_is_0.1_mu_is_116_alpha_0.049
 X, Y, Z = axes3d.get_test_data(0.05)
 
 xi = np.linspace(18, 5, num=100)
-yi = np.linspace(0.8, 12, num=300)
+yi = np.linspace(0.5, 12, num=300)
 X, Y = np.meshgrid(xi, yi)
 
 Z = griddata(data['E_dc'], data['omega'], data['A'], xi, yi)

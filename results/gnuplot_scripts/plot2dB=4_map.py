@@ -19,7 +19,7 @@ fig.subplots_adjust(left=0.1, top=0.95)
 ax   = fig.add_subplot(111)
 ax.set_title("$Absorption$ $map$ $for$ $\\tilde{B}=4$, $\mu=116$, $\\alpha=0.0496$, $E_{\omega}=0.1$")
 
-plt.yticks([0.8, 2, 4, 6, 8, 10])
+plt.yticks([0.5, 2, 4, 6, 8, 10])
 
 data = np.genfromtxt('B=4/absorption_B_is_4_E_omega_is_0.1_mu_is_116_alpha_0.0496_vary_E_dc_and_omega.data', 
                      delimiter=' ', 
@@ -28,7 +28,7 @@ data = np.genfromtxt('B=4/absorption_B_is_4_E_omega_is_0.1_mu_is_116_alpha_0.049
 X, Y, Z = axes3d.get_test_data(0.05)
 
 xi = np.linspace(10, 5, num=100)
-yi = np.linspace(0.8, 10, num=300)
+yi = np.linspace(0.5, 10, num=300)
 
 E_dc_cyclotron = np.linspace(5, 2*tilde_B-0.01, num=200)
 E_dc_bloch     = np.linspace(2*tilde_B+0.01, 10, num=100)
@@ -36,8 +36,8 @@ OmegaCLow      = map(omega_c_low, E_dc_cyclotron)
 OmegaCHigh     = map(omega_c_high, E_dc_bloch)
 E_dc_cyclotron = np.append(E_dc_cyclotron, 2*tilde_B)
 E_dc_bloch     = np.insert(E_dc_bloch, 0, 2*tilde_B)
-OmegaCHigh     = np.insert(OmegaCHigh, 0, 0.8)
-OmegaCLow      = np.append(OmegaCLow, 0.8)
+OmegaCHigh     = np.insert(OmegaCHigh, 0, 0.5)
+OmegaCLow      = np.append(OmegaCLow, 0.5)
 
 X, Y = np.meshgrid(xi, yi)
 Z = griddata(data['E_dc'], data['omega'], data['m_eff'], xi, yi)

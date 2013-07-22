@@ -162,8 +162,8 @@ int main(int argc, char **argv) {
 
   ffloat *host_av_data; host_av_data = (ffloat *)calloc(5, sizeof(ffloat));
   ffloat *av_data;
-  HANDLE_ERROR(cudaMalloc((void **)&av_data, 5*sizeof(ffloat)));
-  HANDLE_ERROR(cudaMemset((void *)av_data, 0, 5*sizeof(ffloat)));
+  HANDLE_ERROR(cudaMalloc((void **)&av_data, 6*sizeof(ffloat)));
+  HANDLE_ERROR(cudaMemset((void *)av_data, 0, 6*sizeof(ffloat)));
 
   float t_hs = 0;
 
@@ -193,7 +193,7 @@ int main(int argc, char **argv) {
         av(blocks, a[next], b[next], av_data, t);
         HANDLE_ERROR(cudaMemcpy(host_a, a[current], SIZE_2Df, cudaMemcpyDeviceToHost));
         HANDLE_ERROR(cudaMemcpy(host_b, b[current], SIZE_2Df, cudaMemcpyDeviceToHost));
-        HANDLE_ERROR(cudaMemcpy(host_av_data, av_data, 5*sizeof(ffloat), cudaMemcpyDeviceToHost));
+        HANDLE_ERROR(cudaMemcpy(host_av_data, av_data, 6*sizeof(ffloat), cudaMemcpyDeviceToHost));
         ffloat norm = eval_norm(host_a, host_alpha, MSIZE);
         print_time_evolution_of_parameters(out, norm, host_a, host_b, MSIZE, 
                                            host_mu, host_alpha, host_E_dc, host_E_omega, host_omega,
@@ -223,7 +223,7 @@ int main(int argc, char **argv) {
 
       if( out != stdout && display != 7 ) {
         step++;
-        if( step == 100 ) {
+        if( step == 300 ) {
           printf("\rt=%0.9f %0.2f%%", t, t/t_max*100);
           fflush(stdout);
           step = 0;
@@ -234,7 +234,7 @@ int main(int argc, char **argv) {
 
     HANDLE_ERROR(cudaMemcpy(host_a, a[current], SIZE_2Df, cudaMemcpyDeviceToHost));
     HANDLE_ERROR(cudaMemcpy(host_b, b[current], SIZE_2Df, cudaMemcpyDeviceToHost));
-    HANDLE_ERROR(cudaMemcpy(host_av_data, av_data, 5*sizeof(ffloat), cudaMemcpyDeviceToHost));
+    HANDLE_ERROR(cudaMemcpy(host_av_data, av_data, 6*sizeof(ffloat), cudaMemcpyDeviceToHost));
 
     ffloat norm = 0;
     ffloat dphi_over_2 = host_dPhi/2.0;
@@ -285,13 +285,15 @@ int main(int argc, char **argv) {
       host_av_data[3] *= m_over_multiplier;
       host_av_data[4] *= v_dr_multiplier;
       host_av_data[4] /= T;
+      host_av_data[5] *= v_dr_multiplier;
+      host_av_data[5] /= T;
 
       fprintf(out, "# display=%d E_dc=%0.20f E_omega=%0.20f omega=%0.20f mu=%0.20f alpha=%0.20f n-harmonics=%d PhiYmin=%0.20f PhiYmax=%0.20f B=%0.20f t-max=%0.20f dt=%0.20f g-grid=%d\n",
                       display,   host_E_dc,  host_E_omega,  host_omega,  host_mu,  host_alpha,  host_N,        PhiYmin,       PhiYmax,       host_B,  t_start,     host_dt,  host_M);
-      fprintf(out, "#E_{dc}                \\tilde{E}_{\\omega}     \\tilde{\\omega}         mu                     v_{dr}/v_{p}         A(\\omega)              NORM     v_{y}/v_{p}    m/m_{x,k}   <v_{dr}/v_{p}>   <v_{y}/v_{p}>    <m/m_{x,k}>\n");
-      fprintf(out, "%0.20f %0.20f %0.20f %0.20f %0.20f %0.20f %0.20f %0.20f %0.20f %0.20f %0.20f %0.20f\n", 
+      fprintf(out, "#E_{dc}                \\tilde{E}_{\\omega}     \\tilde{\\omega}         mu                     v_{dr}/v_{p}         A(\\omega)              NORM     v_{y}/v_{p}    m/m_{x,k}   <v_{dr}/v_{p}>   <v_{y}/v_{p}>    <m/m_{x,k}>    Asin\n");
+      fprintf(out, "%0.20f %0.20f %0.20f %0.20f %0.20f %0.20f %0.20f %0.20f %0.20f %0.20f %0.20f %0.20f %0.20f\n", 
               host_E_dc, host_E_omega, host_omega, host_mu, v_dr_inst, host_av_data[4], norm, v_y_inst, 
-              m_over_m_x_inst, host_av_data[1], host_av_data[2], host_av_data[3]);
+              m_over_m_x_inst, host_av_data[1], host_av_data[2], host_av_data[3], host_av_data[5]);
     }
 
     if( read_from == NULL ) { break; }
@@ -304,7 +306,7 @@ int main(int argc, char **argv) {
     t0 = t + host_dt;
     T=host_omega>0?(2*PI/host_omega):0;
     load_data(); // re-load data
-    HANDLE_ERROR(cudaMemset((void *)av_data, 0, 5*sizeof(ffloat))); // clear averaging data
+    HANDLE_ERROR(cudaMemset((void *)av_data, 0, 6*sizeof(ffloat))); // clear averaging data
     printf("# t_max = %0.20f\n", t_max);
   } // for(;;)
 
@@ -350,11 +352,13 @@ void print_time_evolution_of_parameters(FILE *out, ffloat norm, ffloat *host_a, 
   host_av_data[3] *= m_over_multiplier;
   host_av_data[4] *= v_dr_multiplier;
   host_av_data[4] /= t;
+  host_av_data[5] *= v_dr_multiplier;
+  host_av_data[5] /= t;
   
-  fprintf(out, "#E_{dc}                \\tilde{E}_{\\omega}     \\tilde{\\omega}         mu                     v_{dr}/v_{p}         A(\\omega)              NORM     v_{y}/v_{p}    m/m_{x,k}   <v_{dr}/v_{p}>   <v_{y}/v_{p}>    <m/m_{x,k}>  A_{inst}  t\n");
-  fprintf(out, "%0.20f %0.20f %0.20f %0.20f %0.20f %0.20f %0.20f %0.20f %0.20f %0.20f %0.20f %0.20f %0.20f %0.20f\n", 
+  fprintf(out, "#E_{dc}                \\tilde{E}_{\\omega}     \\tilde{\\omega}         mu                     v_{dr}/v_{p}         A(\\omega)              NORM     v_{y}/v_{p}    m/m_{x,k}   <v_{dr}/v_{p}>   <v_{y}/v_{p}>    <m/m_{x,k}>  A_{inst}  t    Asin\n");
+  fprintf(out, "%0.20f %0.20f %0.20f %0.20f %0.20f %0.20f %0.20f %0.20f %0.20f %0.20f %0.20f %0.20f %0.20f %0.20f %0.20f\n", 
           host_E_dc, host_E_omega, host_omega, host_mu, v_dr_inst, host_av_data[4], norm, v_y_inst, 
-          m_over_m_x_inst, host_av_data[1], host_av_data[2], host_av_data[3], cos(host_omega*t)*v_dr_inst, t);
+          m_over_m_x_inst, host_av_data[1], host_av_data[2], host_av_data[3], cos(host_omega*t)*v_dr_inst, t, host_av_data[4]);
 } // end of print_time_evolution_of_parameters(...)
 
 // Write out distribution function to FILE *out. This used when writing data to generate animation

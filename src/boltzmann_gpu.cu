@@ -8,6 +8,8 @@
 #include <gsl/gsl_specfunc.h>
 #include "boltzmann.h"
 
+#define PPP 64
+
 extern "C"
 void HandleError(cudaError_t err, const char *file, int line) {
   if (err != cudaSuccess) {
@@ -112,6 +114,65 @@ __global__ void _step_on_half_grid(ffloat *a0, ffloat *a_current,    ffloat *b_c
   }
 } // end of _step_on_half_grid(...)
 
+__global__ void av_gpu_parallel(ffloat *a, ffloat *b, ffloat *av_data, ffloat t) {  
+  //threadIdx.x;
+  //blockIdx.x;
+  //blockDim.x; // number of threads per block
+
+  __shared__ ffloat v_dr_acc[PPP];
+  __shared__ ffloat v_y_acc[PPP];
+  __shared__ ffloat m_over_m_x_inst_acc[PPP];
+
+  int thid = threadIdx.x;
+  v_dr_acc[thid]            = 0;
+  v_y_acc[thid]             = 0;
+  m_over_m_x_inst_acc[thid] = 0;
+  for( int i = thid+1; i < TMSIZE; i += PPP ) {
+    v_dr_acc[thid]            += dnm(b,1,i)*dPhi;
+    v_y_acc[thid]             += dnm(a,0,i)*dev_phi_y(i)*dPhi;
+    m_over_m_x_inst_acc[thid] += dnm(a,1,i)*dPhi;
+  }
+
+  __syncthreads();
+
+  
+  //for(int delta = PPP/2; delta > 0; delta /= 2 ) {
+  //int delta = PPP/2;
+  //  for( int i = thid; i < delta; i++ ) {
+  //    v_dr_acc[i]            += v_dr_acc[i+delta];
+  //    v_y_acc[i]             += v_y_acc[i+delta];
+  //    m_over_m_x_inst_acc[i] += m_over_m_x_inst_acc[i+delta];
+  //  }
+  //  __syncthreads();
+    //}
+    //__syncthreads();
+
+  if( thid == 0 ) {
+    int av_count = av_data[0] + 1; 
+    ffloat v_dr_inst = 0; ffloat v_y_inst = 0; ffloat m_over_m_x_inst = 0;
+    for( int m = 0; m < PPP; m++ ) {
+      v_dr_inst += v_dr_acc[m];
+      v_y_inst  += v_y_acc[m];
+      m_over_m_x_inst += m_over_m_x_inst_acc[thid];
+    }
+    //ffloat v_dr_inst = v_dr_acc[0]; ffloat v_y_inst = v_y_acc[0]; ffloat m_over_m_x_inst = m_over_m_x_inst_acc[0];
+    //v_dr_av = v_dr_av+(v_dr_inst-v_dr_av)/av_count;
+    av_data[1] += (v_dr_inst-av_data[1])/av_count; // av_data[1] holds v_dr_av
+    
+    //v_y_av = v_y_av+(v_y_inst-v_y_av)/av_count;
+    av_data[2] += (v_y_inst-av_data[2])/av_count; // av_data[2] holds v_y_av
+    
+    //m_over_m_x_av = m_over_m_x_av+(m_over_m_x_inst-m_over_m_x_av)/av_count;
+    av_data[3] += (m_over_m_x_inst-av_data[3])/av_count; // av_data[3] holds m_over_m_x_av
+    
+    //A += cos(omega*t)*v_dr_inst*dt;
+    av_data[4] += cos(omega*t)*v_dr_inst*dt; // av_data[4] holds absorption A
+    av_data[5] += sin(omega*t)*v_dr_inst*dt; // av_data[5] holds sin absorption A
+    
+    av_data[0] += 1;
+  }
+} // end of av_gpu_parallel(...)
+
 __global__ void av_gpu(ffloat *a, ffloat *b, ffloat *av_data, ffloat t) {  
   int av_count = av_data[0] + 1; 
 
@@ -133,6 +194,7 @@ __global__ void av_gpu(ffloat *a, ffloat *b, ffloat *av_data, ffloat t) {
 
   //A += cos(omega*t)*v_dr_inst*dt;
   av_data[4] += cos(omega*t)*v_dr_inst*dt; // av_data[4] holds absorption A
+  av_data[5] += sin(omega*t)*v_dr_inst*dt; // av_data[4] holds sin absorption A
 
   av_data[0] += 1;
 } // end of av_gpu(...)
@@ -162,5 +224,6 @@ void step_on_half_grid(int blocks, ffloat *a0, ffloat *a_current,    ffloat *b_c
 
 extern "C"
 void av(int blocks, ffloat *a, ffloat *b, ffloat *av_data, ffloat t) {
-  av_gpu<<<1,1>>>(a, b, av_data, t);
+  av_gpu_parallel<<<1,PPP>>>(a, b, av_data, t);
+  //av_gpu<<<1,1>>>(a, b, av_data, t);
 }

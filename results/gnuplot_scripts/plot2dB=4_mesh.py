@@ -8,7 +8,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 fig  = plt.figure()
-#fig.subplots_adjust(right=0.87, top=0.93, wspace=0.13, hspace=0.27)
 ax   = fig.add_subplot(111, projection='3d')
 ax.set_title("$Absorption$ $for$ $\\tilde{B}=4$, $\mu=116$, $\\alpha=0.0496$, $E_{\omega}=0.1$")
 
@@ -19,7 +18,7 @@ data = np.genfromtxt('B=4/absorption_B_is_4_E_omega_is_0.1_mu_is_116_alpha_0.049
 X, Y, Z = axes3d.get_test_data(0.05)
 
 xi = np.linspace(10, 5, num=100)
-yi = np.linspace(0.8, 10, num=300)
+yi = np.linspace(0.5, 10, num=300)
 X, Y = np.meshgrid(xi, yi)
 
 Z=griddata(data['E_dc'], data['omega'], data['A'], xi, yi)

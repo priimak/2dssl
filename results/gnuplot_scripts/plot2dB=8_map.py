@@ -16,9 +16,9 @@ def omega_c_high(E): return math.pi*E/(2*ellipk((2*tilde_B/E)**2))
 fig  = plt.figure()
 fig.subplots_adjust(left=0.1, top=0.95)
 ax   = fig.add_subplot(111)
-ax.set_title("$Absorption$ $map$ $for$ $\\tilde{B}=4$, $\mu=116$, $\\alpha=0.0496$, $E_{\omega}=0.1$")
+ax.set_title("$Absorption$ $map$ $for$ $\\tilde{B}=8$, $\mu=116$, $\\alpha=0.0496$, $E_{\omega}=0.1$")
 
-plt.yticks([0.8, 2, 4, 6, 8, 10, 12])
+plt.yticks([0.5, 2, 4, 6, 8, 10, 12])
 
 data = np.genfromtxt('B=8/absorption_B_is_8_E_omega_is_0.1_mu_is_116_alpha_0.0496_vary_E_dc_and_omega.data', 
                      delimiter=' ', 
@@ -28,7 +28,7 @@ X, Y, Z = axes3d.get_test_data(0.05)
 X, Y, A = axes3d.get_test_data(0.05)
 
 xi             = np.linspace(18, 5, num=100)
-yi             = np.linspace(0.8, 12, num=300)
+yi             = np.linspace(0.5, 12, num=300)
 E_dc_cyclotron = np.linspace(5, 2*tilde_B-0.01, num=200)
 E_dc_bloch     = np.linspace(2*tilde_B+0.01, 18, num=100)
 OmegaCLow      = map(omega_c_low, E_dc_cyclotron)
@@ -36,8 +36,8 @@ OmegaCHigh     = map(omega_c_high, E_dc_bloch)
 
 E_dc_cyclotron = np.append(E_dc_cyclotron, 2*tilde_B)
 E_dc_bloch     = np.insert(E_dc_bloch, 0, 2*tilde_B)
-OmegaCHigh     = np.insert(OmegaCHigh, 0, 0.8)
-OmegaCLow      = np.append(OmegaCLow, 0.8)
+OmegaCHigh     = np.insert(OmegaCHigh, 0, 0.5)
+OmegaCLow      = np.append(OmegaCLow, 0.5)
 
 X, Y = np.meshgrid(xi, yi)
 
@@ -69,7 +69,7 @@ ax.annotate('$\Omega$', xy=(7.8, 7), xytext=(7.8, 7.0), fontsize=15)
 ax.annotate('$\Omega$', xy=(7.8, 7), xytext=(16.4, 8.3), fontsize=15)
 
 ax.set_xlim(5, 18)
-ax.set_ylim(0.8, 12)
+ax.set_ylim(0.5, 12)
 ax.set_xlabel('$E_{dc}$')
 ax.set_ylabel('$\omega$')
 plt.show()

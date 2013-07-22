@@ -77,6 +77,7 @@ p = ax.contour(X, Y, Z, zdir='z', cmap=my_cmap, linewidth=0, antialiased=True, h
 
 p = ax.plot(E_dc_cyclotron, OmegaCLow,  lw=1.5, color='black')
 p = ax.plot(E_dc_bloch,     OmegaCHigh, lw=1.5, color='black')
+ax.set_ylim(0.5, 8)
 #ax.annotate('$\Omega$', xy=(1, 3), xytext=(0.5, 1.1),  fontsize=15)
 #ax.annotate('$\Omega$', xy=(1, 3), xytext=(5.3, 4.73), fontsize=15)
 
