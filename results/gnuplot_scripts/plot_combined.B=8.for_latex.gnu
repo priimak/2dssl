@@ -1,6 +1,7 @@
 set terminal epslatex 8 solid color colortext input lw 2
 set size 1.4,1.2
 set output "plots/v_dr_of_e_dc_B=diff.tex"
+print "Writing plots/v_dr_of_e_dc_B=diff.tex"
 
 set title "$v_{dr}/v_{p}=f(E_{dc}/E_{*})$ $\\mu=116$ $\\alpha=0.9496$ $B=[0, 4, 8]$ $E_{\\omega}=0$"
 

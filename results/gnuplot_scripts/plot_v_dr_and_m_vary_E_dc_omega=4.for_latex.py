@@ -137,4 +137,6 @@ ax2.annotate('$\\frac{m_*}{m_x}$', xy=(4.8,0.1), xycoords='data', fontsize='larg
 ax2.fill_between(data['E_dc'], data['m_eff'], 0, interpolate=True, where=data['m_eff']<0, color='#0000ff', alpha=0.3)
 
 #plt.show()
-plt.savefig("plots/v_dr_and_m_vary_E_dc_and_mu_omega=4.pdf", format="pdf")
+outfile="plots/v_dr_and_m_vary_E_dc_and_mu_omega=4.pdf"
+print "Writing {o}".format(o=outfile)
+plt.savefig(outfile, format="pdf")

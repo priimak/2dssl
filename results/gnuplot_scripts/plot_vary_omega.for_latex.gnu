@@ -1,6 +1,7 @@
 set terminal epslatex 8 solid color colortext input lw 2
 set size 1.4,1.2
 set output "plots/combined_B=0_and_4_mu=116_and_1_16_E_omega=0_1.tex"
+print "Writing gnuplot_scripts/plot_vary_omega.for_latex.gnu"
 
 set title "Absoprtion $A$ as a function of $\\omega$. $\\mu=116$ $\\alpha=0.9496$ $E_{\\omega}=1$ $E_{dc}=6.4$ $B=4$"
 

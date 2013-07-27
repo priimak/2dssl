@@ -29,7 +29,7 @@ ax.set_title("(a)")
 
 plt.yticks([0.5, 2, 4, 6, 8, 10])
 
-data = np.genfromtxt('../bin/absorption_B_is_1_E_omega_is_0.1_mu_is_116_alpha_0.0496_vary_E_dc_and_omega', 
+data = np.genfromtxt('B=1/absorption_B_is_1_E_omega_is_0.1_mu_is_116_alpha_0.0496_vary_E_dc_and_omega.data', 
                      delimiter=' ', 
                      names=['E_dc', 'E_omega', 'omega', 'mu', 'v_dr_inst', 'A', 'NORM', 'v_y_inst', 'm_eff_inst', 'v_dr', 'v_y', 'm_eff'])
 
@@ -96,7 +96,7 @@ ax.set_title("(b)")
 
 plt.yticks([0.5, 2, 4, 6, 8, 10])
 
-data = np.genfromtxt('../bin/absorption_B_is_3_E_omega_is_0.1_mu_is_116_alpha_0.0496_vary_E_dc_and_omega', 
+data = np.genfromtxt('B=3/absorption_B_is_3_E_omega_is_0.1_mu_is_116_alpha_0.0496_vary_E_dc_and_omega.data', 
                      delimiter=' ', 
                      names=['E_dc', 'E_omega', 'omega', 'mu', 'v_dr_inst', 'A', 'NORM', 'v_y_inst', 'm_eff_inst', 'v_dr', 'v_y', 'm_eff'])
 
@@ -272,7 +272,9 @@ ax.set_ylim(0.5, 12)
 #ax.set_xlabel('$E_{dc}$')
 #ax.set_ylabel('$\omega$')
 
-plt.savefig("plots/absorption_maps_E_omega_is_0_point_1_mu_is_116_alpha_0_point_0496.pdf", format="pdf")
+outfile="plots/absorption_maps_E_omega_is_0_point_1_mu_is_116_alpha_0_point_0496.pdf"
+print "Writing {o}".format(o=outfile)
+plt.savefig(outfile, format="pdf")
 #plt.show()
 exit
 

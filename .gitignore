@@ -3,3 +3,6 @@ bin/cn.av.cuda
 bin/cn.lf.cuda
 bin/fourier.cuda
 bin/fourier.float
+results/plots/
+movies/
+results/png/*.png

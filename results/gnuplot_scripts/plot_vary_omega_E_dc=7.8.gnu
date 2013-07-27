@@ -1,6 +1,7 @@
 set terminal epslatex 8 solid color colortext input lw 2
 set size 1.4,1.2
 set output "plots/vary_omega_B=4_mu=116_E_omega=0_1_E_dc=7_point_8.tex"
+print "Writing plots/vary_omega_B=4_mu=116_E_omega=0_1_E_dc=7_point_8.tex"
 
 set title "Absoprtion $A$ as a function of $\\omega$. $\\mu=116$, $\\alpha=0.9496$, $E_{\\omega}=0.1$, $B=4$, $E_{dc}=7.8$"
 

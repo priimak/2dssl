@@ -1,6 +1,7 @@
 set terminal epslatex 8 solid color colortext input lw 2
 set size 1.4,1.2
 set output "plots/cycl_vs_bloch_gain.tex"
+print "Writing plots/cycl_vs_bloch_gain.tex"
 
 set title "Absoprtion $A$ as a function of $\\omega$. $\\mu=116$, $\\alpha=0.9496$, $E_{\\omega}=0.1$, $E_{dc}=[0,6.4]$, $B=4$"
 
