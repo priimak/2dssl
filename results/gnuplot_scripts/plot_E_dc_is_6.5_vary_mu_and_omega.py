@@ -30,6 +30,10 @@ index = np.asarray([row['mu'] > 1.15999995 and row['mu'] < 1.15999999 for row in
 fdata = data[index]
 p1 = ax.plot(fdata['omega'], fdata['A'], color='#ff0000', lw=2)
 
+index = np.asarray([row['mu'] > 2.9 and row['mu'] < 3.1 for row in data])
+fdata = data[index]
+p1_1 = ax.plot(fdata['omega'], fdata['A'], color='#999900', lw=2)
+
 index = np.asarray([row['mu'] > 11 and row['mu'] < 12 for row in data])
 fdata = data[index]
 p1 = ax.plot(fdata['omega'], fdata['A'], color='#33aaaa', lw=2)
@@ -40,7 +44,7 @@ p1 = ax.plot(fdata['omega'], fdata['A'], color='#00bbff', lw=2)
 
 p1 = ax.plot(data2['omega'], data2['A'], color='#0000ff', lw=2)
 
-ax.legend(['$\mu=1.16$', '$\mu=11.16$', '$\mu=32.16$', '$\mu=116$'], loc='best')
+ax.legend(['$\mu=1.16$', '$\mu=3$', '$\mu=11.16$', '$\mu=32.16$', '$\mu=116$'], loc='best')
 
 p5 = ax.plot([0,10], [0,0], color='black', lw=1.2, ls='dashed')
 
@@ -57,6 +61,10 @@ index = np.asarray([row['mu'] > 1.15999995 and row['mu'] < 1.15999999 for row in
 fdata = data[index]
 p1 = ax.plot(fdata['omega'], fdata['ASIN'], color='#ff0000', lw=2)
 
+index = np.asarray([row['mu'] > 2.9 and row['mu'] < 3.1 for row in data])
+fdata = data[index]
+p1_1 = ax.plot(fdata['omega'], fdata['ASIN'], color='#999900', lw=2)
+
 index = np.asarray([row['mu'] > 11 and row['mu'] < 12 for row in data])
 fdata = data[index]
 p1 = ax.plot(fdata['omega'], fdata['ASIN'], color='#33aaaa', lw=2)
@@ -67,7 +75,7 @@ p1 = ax.plot(fdata['omega'], fdata['ASIN'], color='#00bbff', lw=2)
 
 p1 = ax.plot(data2['omega'], data2['ASIN'], color='#0000ff', lw=2)
 
-ax.legend(['$\mu=1.16$', '$\mu=11.16$', '$\mu=32.16$', '$\mu=116$'], loc='best')
+ax.legend(['$\mu=1.16$', '$\mu=3$', '$\mu=11.16$', '$\mu=32.16$', '$\mu=116$'], loc='best')
 
 p5 = ax.plot([0,10], [0,0], color='black', lw=1.2, ls='dashed')
 

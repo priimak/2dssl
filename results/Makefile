@@ -18,6 +18,7 @@ gnuplot_scripts/plot_A_and_m_vary_E_dc_omega=4.for_latex.py && \
 gnuplot_scripts/plot2dB_maps.py && \
 gnuplot_scripts/plot_A_and_ASIN_B_is_4_E_omega_is_0.1_mu_is_116_alpha_0.9496_E_dc_is_6.5_8.2_9.5_vary_omega.py && \
 gnuplot_scripts/plot_E_dc_is_6.5_vary_mu_and_omega.py && \
+gnuplot_scripts/plot_E_dc_is_7.8_vary_mu_and_omega.py && \
 gnuplot_scripts/plot_E_dc_is_8.2_vary_mu_and_omega.py && \
 gnuplot_scripts/plot_E_dc_is_9.5_vary_mu_and_omega.py
 # gnuplot_scripts/plot2dB=4_map.py

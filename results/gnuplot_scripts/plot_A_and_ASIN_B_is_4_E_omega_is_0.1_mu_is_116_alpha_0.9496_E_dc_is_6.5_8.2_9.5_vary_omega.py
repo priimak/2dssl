@@ -45,9 +45,11 @@ my_cmap = matplotlib.colors.LinearSegmentedColormap('my_colormap', cdict, 256)
 p = ax.contourf(X, Y, A, zdir='z', cmap=my_cmap, linewidth=0, antialiased=True, hold='on',
                 levels=[-0.05,-0.02,-0.015,-0.01,-0.005,0,0.01,0.02,0.03,0.04,0.05])
 p = ax.plot([6.5, 6.5], [0.5,10], lw=1.5, color='black', linestyle='--')
+p = ax.plot([7.8, 7.8], [0.5,10], lw=1.5, color='black', linestyle='--')
 p = ax.plot([8.2, 8.2], [0.5,10], lw=1.5, color='black', linestyle='--')
 p = ax.plot([9.5, 9.5], [0.5,10], lw=1.5, color='black', linestyle='--')
 ax.annotate('(b)', xy=(6.55,7.7), xycoords='data', fontsize='medium')
+ax.annotate('(e)', xy=(7.45,6.7), xycoords='data', fontsize='medium')
 ax.annotate('(c)', xy=(8.25,7.7), xycoords='data', fontsize='medium')
 ax.annotate('(d)', xy=(9.55,7.7), xycoords='data', fontsize='medium')
 ax.set_xlabel('$\\tilde{E}_{dc}$', labelpad=-10)
@@ -65,7 +67,6 @@ omega_1 = [omega_resonance_1, omega_resonance_1]
 omega_2 = [omega_resonance_1*3, omega_resonance_1*3]
 omega_3 = [omega_resonance_1*3, omega_resonance_1*3]
 line_value = [-0.02, 0.06]
-
 
 data_mu_116 = np.genfromtxt('B=4/B_is_4_E_omega_is_0.1_mu_is_116_alpha_0.9496_E_dc_is_6.5_vary_omega.data',
                             delimiter=' ', comments='#',
