@@ -14,5 +14,8 @@ bin/cn: src/cn.c
 bin/fourier.bd: src/fourier.bd.c
 	c99 -lm -lgsl -lgslcblas src/fourier.bd.c -o bin/fourier.bd
 
+bin/boltzmann_c_solver: src/boltzmann_c_solver.c src/boltzmann_cli.c src/boltzmann_cli.h src/boltzmann.h src/boltzmann_solver.h
+	gcc -std=gnu99 -lm -lgsl -lgslcblas $+ -o $@
+
 clean: 
 	rm -rf bin/fourier.lax bin/fourier.long bin/fourier.bd
