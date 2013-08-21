@@ -38,7 +38,7 @@ index = np.asarray([row['mu'] > 11 and row['mu'] < 12 for row in data])
 fdata = data[index]
 p1 = ax.plot(fdata['omega'], fdata['A'], color='#33aaaa', lw=2)
 
-index = np.asarray([row['mu'] > 31 and row['mu'] < 32 for row in data])
+index = np.asarray([row['mu'] > 31 and row['mu'] < 33 for row in data])
 fdata = data[index]
 p1 = ax.plot(fdata['omega'], fdata['A'], color='#00bbff', lw=2)
 
@@ -69,7 +69,7 @@ index = np.asarray([row['mu'] > 11 and row['mu'] < 12 for row in data])
 fdata = data[index]
 p1 = ax.plot(fdata['omega'], fdata['ASIN'], color='#33aaaa', lw=2)
 
-index = np.asarray([row['mu'] > 31 and row['mu'] < 32 for row in data])
+index = np.asarray([row['mu'] > 31 and row['mu'] < 33 for row in data])
 fdata = data[index]
 p1 = ax.plot(fdata['omega'], fdata['ASIN'], color='#00bbff', lw=2)
 
@@ -87,6 +87,3 @@ ax.set_xlabel('$\\tilde{\omega}$')
 outfile="plots/A_and_ASIN_of_omega_E_dc_is_6_point_5_vary_mu.pdf"
 print "Writing {o}".format(o=outfile)
 plt.savefig(outfile, format="pdf")
-
-
-

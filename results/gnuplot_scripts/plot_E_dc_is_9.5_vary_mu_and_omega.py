@@ -81,6 +81,3 @@ ax.set_xlabel('$\\tilde{\omega}$')
 outfile="plots/A_and_ASIN_of_omega_E_dc_is_9_point_5_vary_mu.pdf"
 print "Writing {o}".format(o=outfile)
 plt.savefig(outfile, format="pdf")
-
-
-
