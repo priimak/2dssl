@@ -6,7 +6,7 @@
 // compare equality of two strings
 #define streq(str1, str2) (strcmp((str1),(str2)) == 0)
 
-// used for checking that command line parater was set if it is not set 
+// used for checking that command line parater was set if it is not set
 // then prints out error message and exists program
 #define check_param(param, name) \
   do { \
@@ -16,12 +16,14 @@
     } \
   } while (0)
 
+// suppress vareous debug output
+int quiet = 0;
 
 // indicates what data are we to display
 int display = -999;
 
 // E = E_{dc}+E_{\omega}\cos(\omega t)
-ffloat host_E_dc = -999, host_E_omega = -999, host_omega = -999; 
+ffloat host_E_dc = -999, host_E_omega = -999, host_omega = -999;
 
 // defines temperature
 ffloat host_mu = -999;
@@ -32,7 +34,7 @@ ffloat host_alpha = -999;
 // number of harmonics
 int host_N = -999;
 
-// limits along \phi_{y} axis 
+// limits along \phi_{y} axis
 ffloat PhiYmin = -999, PhiYmax = -999;
 
 // magnetic field
@@ -52,14 +54,15 @@ char *out_file = (char *)"-";
 // actual output file handle
 FILE *out = NULL;
 
-// if set when computation cycle is done the solver will not quit, but will try to read 
+// if set when computation cycle is done the solver will not quit, but will try to read
 // from read_from file handle to set one of the common computational parameters, such as E_dc etc.,
-// as well as timeout parameter, intent of which is to give time for relaxation to a new 
-// parameter set 
+// as well as timeout parameter, intent of which is to give time for relaxation to a new
+// parameter set
 FILE *read_from = NULL;
 
 extern ffloat host_dt;
 extern int host_M;
+extern int device;
 
 // scan for new parameter from read_from file stream
 ffloat scan_for_new_parameters() {
@@ -110,6 +113,8 @@ void parse_cmd(int argc, char **argv) {
     if( streq(name, "dt")          ) { host_dt      = strtod(value,  NULL); } else
     if( streq(name, "g-grid")      ) { host_M       = atoi(value);          } else
     if( streq(name, "read-from")   ) { rf_name      = strdup(value);        } else
+    if( streq(name, "quiet")       ) { quiet        = 1;                    } else
+    if( streq(name, "device")      ) { device       = atoi(value);          } else
     if( streq(name, "o")           ) { out_file     = strdup(value);        }
   }
 
@@ -130,9 +135,12 @@ void parse_cmd(int argc, char **argv) {
   // validate display values
   if( display != 3  &&
       display != 4  &&
+      display != 7  &&
+      display != 8  &&
+      display != 9  &&
       display != 77 )
   {
-      fprintf(stderr, "ERROR: Invalid value of display= parameter. Possible values are 3, 4 or 77.\n");
+      fprintf(stderr, "ERROR: Invalid value of display= parameter. Possible values are 3, 4, 8 or 77.\n");
       exit(EXIT_FAILURE);
   }
 
@@ -141,14 +149,14 @@ void parse_cmd(int argc, char **argv) {
       fprintf(stderr, "ERROR: Invalid value of t-max= parameter. it must be greater than 0.\n");
       exit(EXIT_FAILURE);
   }
-  
+
   // read additional parameters from rf_name
   if( rf_name != NULL ) {
-    if( streq(rf_name, "stdin") ) { 
+    if( streq(rf_name, "stdin") ) {
       read_from = stdin;
     } else {
       fprintf(stderr, "ERROR: Invalid value of read-from=\n");
-      exit(EXIT_FAILURE);    
+      exit(EXIT_FAILURE);
     }
   }
 
