@@ -15,8 +15,9 @@
 \usepackage{caption}
 \DeclareGraphicsExtensions{.pdf,.png,.jpg,.eps} 
 \author{Dmitri Priimak}
-\title{Boltzmann equation in 2D SSL with cross magnetic and electric fields}
+\title{High-frequency signal amplification in semiconductor super-lattice in cross electric and magnetic fields}
 \begin{document}
+\bibliographystyle{plain}
 \newcommand{\ddx}[2] {
 	\frac{\text{d}#1}{\text{d}#2}
 }
@@ -27,19 +28,54 @@
 	\frac{\text{d}^{2}#1}{\text{d}t^{2}}
 }
  \begin{center}
-  \underline{Boltzmann equation in 2D SSL with cross magnetic and electric fields}
+  \underline{High-frequency signal amplification in semiconductor super-lattice in cross electric and magnetic fields}
  \end{center}
   \begin{center}
-    \underline{Rev. 16}
+    \underline{Rev. 17}
   \end{center}
+  \section{Introduction}  
+  A semiconductor superlattice (SL), first studied by Esaki and Tsu \cite{Esaki:70}, offers may opportunities for
+  industrial 
+  applications, some of which has been realized [*] and some are still waiting to be discovered. One of the
+  earliest studied properties of SL were Bloch oscillations \cite{BLOCH}, which would allow amplification of 
+  THz emf fields. This however did not come to fruition as there are mechanisms that destroy these 
+  oscillations, one of
+  which is formation of electron domains [*]. However 
+  tell-tale signs of Bloch oscillations were detected in experiments where transient processes of electron 
+  relaxation were studied in SL \cite{PhysRevB.56.10303}. Several different methods to stabilise Bloch oscillations were proposed [*], 
+  but experimental verification proves elusive [*]. Detailed review of SL theory and known analytical solutions 
+  can be found in work by A. Wacker \cite{WAC01}.
+  
+  In out work we look at SL, using semi-classical theory, under action of electric field $E(t)=E_{dc}+E_\omega\cos(\omega t)$ along the 
+  superlattice axis and constant perpendicular magnetic field.
+  	\begin{figure}[H]
+	  \centering
+	  \normalsize % use normal font size in the figure
+	  \includegraphics[scale=0.7]{illustrations/SL_CROSS_E_AND_B.pdf}
+	  \caption{}
+	\end{figure}
+  This configuration has already been studied in the limiting case of zero temperature \cite{PhysRevLett.103.117401}. We, however, will be 
+  looking at non-zero temperature, all the way up to the room temperature. The gist of our approach is that we 
+  will be looking at such values of $B$ and $E_{dc}$ so that SL does not operate in Bloch oscillation regime, but
+  instead is in cyclotron like mode. This way we can avoid stability problems inherent in Bloch oscillations and 
+  non-linearity of dispersion relation provides possibility of small, high frequency signal amplification, 
+  ultimately paving the way to the lasing medium.
+  
   \section{Analytical treatment}
-	We start from following Boltzmann equation
+    We take approach of semi-classical theory based on Boltzmann equation, where, the entirety of quantum 
+    mechanical nature of the SL is hidden in electron velocity $\mathbf{v}(\mathbf{k})$, which is a function of $
+    \mathbf{k}$, crystal momentum. 
     \begin{equation}\label{eq:boltzmann}
      \frac{\partial f}{\partial t}+
      \frac{e}{\hbar}\left ( \mathbf{E} + \mathbf{v}\times\mathbf{B} \right ) \frac{\partial f}{\partial\mathbf{k}}+
      \mathbf{v}(\mathbf{k})\frac{\partial f}{\partial r} = \left ( \frac{\partial f}{\partial t} \right )_{st}
     \end{equation}
-    We consider case when $f(...)$ is spatially homogeneous, i.e. it depends only on $\mathbf{k}$, then
+    Where $\left ( \partial f/\partial t \right )_{st}$ is a collision term responsible for relaxation to the
+    normal electron density distribution function in the absence of external fields. Here we consider the simplest
+    form of this term $(f_0-f)/\tau$. Where $f_0$ is, in general, Fermi distribution, but at finite temperatures
+    can be approximated by Boltzmann distribution.
+    Since we consider electron density $f$ to be spatially homogeneous, $f$ depends only on $\mathbf{k}$ and 
+    Boltzmann equation takes form
     \begin{equation}\label{eq:boltzmann_homo}
      \frac{\partial f}{\partial t}+
      \frac{e}{\hbar}\left ( \mathbf{E} + \mathbf{v}\times\mathbf{B} \right ) \frac{\partial f}{\partial\mathbf{k}}
@@ -51,7 +87,8 @@
      \mathbf{B}=&(0,0,B) \\
      \mathbf{v}\times\mathbf{B}=&(v_y B, -v_x B, 0))
     \end{align}
-    And will make following substitution
+    We now proceed with making variety of substitutions to turn this equation into dimensionless form. First we
+    will make following substitution
     \begin{equation}
      t \to \tau t
     \end{equation}
@@ -101,7 +138,7 @@
      \sqrt{\alpha}\omega_c\tau\sin(k_x d)\frac{\partial f}{\partial(k_y d)}
      = f_0 - f
    \end{equation}
-   And if we know define
+   And if we now define
    \begin{align}
        \phi_x=&k_{x}d \\
        \phi_y=&\frac{k_{y}d}{\sqrt{\alpha}} \\
@@ -149,7 +186,7 @@
 	   \int^{\pi}_{-\pi}e^{\mu\cos(\phi_x)}\text{d}\phi_x \\
 	   =&2\pi I_0(\mu)\sqrt{\frac{2\pi\alpha}{\mu}}
     \end{align}
-    Thus full form of equilibrium distribution is
+    Thus, full form of equilibrium distribution is
     \begin{equation}
     \boxed{
 	f_0=\frac{1}{2\pi I_0(\mu)}\sqrt{\frac{\mu}{2\pi\alpha}}\exp{\left \{ \mu\cos(\phi_x)-\frac{\mu}{2}\phi^2_y\right \} } }
@@ -162,9 +199,9 @@
 			\frac{\partial\varepsilon}{\partial p_x}f(p_x,p_y)\text{d}p_x\text{d}p_y \\
 			=&\sqrt{\alpha}\int^{\pi}_{-\pi}\text{d}\phi_x\int^{+\infty}_{-\infty}\text{d}\phi_y\sin(\phi_x)f(\phi_x,\phi_y)\label{eq:v_dr_generic}
 	\end{align}
-    When magentic field is $0$ and $E$ is constant, i.e. $E_{dc}$, analytic 
+    When magnetic field is $0$ and $E$ is constant, i.e. $E_{dc}$, analytic 
     solution Boltzmann equation is well known and as well as expression for 
-    drift velocity
+    drift velocity and absorption (see below) \cite{WAC01}
     \begin{align}
 	v_{dr}=&\left \{ \sqrt{\alpha}\int^{\pi}_{-\pi}\text{d}\phi_x\int^{+\infty}_{-\infty}\text{d}\phi_y\sin(\phi_x)f_0(\phi_x,\phi_y)\right \}
 	\frac{E_{dc}/E_*}{1+(E_{dc}/E_*)^2} \\
@@ -251,7 +288,11 @@
 	\begin{equation}
 		m^{-1}_{x,\mathbf{k}}=\frac{1}{\hbar^2}\frac{\partial^2\varepsilon}{\partial k^2_x}
 	\end{equation}
-	We will be working however with ratio of electron mass to $m_{x,\mathbf{k}}$. And in our approximation of energy (\ref{eq:energy_unscaled}) that takes form
+	Negative sign of electron effective mass can serve as an intuitive indicator of such state of the system,
+	where a/c signal amplification is possible. Although in more exotic situations amplification may take place
+	even with positive sign of electron effective mass. In out calculations, however, we will be working with
+	ratio of electron mass to $m_{x,\mathbf{k}}$. And in tight-binding approximation, when 
+	energy is defined as (\ref{eq:energy_unscaled}), that takes form
 	\begin{align}
 	\frac{m}{m_{x,\mathbf{k}}}=&\frac{\Delta_1 d^2m}{2\hbar^2}\cos(k_xd) \\
 	=&\alpha\cos(\phi_x)
@@ -422,9 +463,13 @@
 		\mathbf{r}^{t+3/2}_{n,m}=&\mathbf{T}(\mathbf{r}^{t+1/2}_{n,m};A^{t+1}_{n,m},B^{t+1}_{n,m}) \label{eq:leap_frog_shift_2}
 	\end{align}
 	Use of equations (\ref{eq:leap_frog_shift_1}) and (\ref{eq:leap_frog_shift_2}) is indicated by lower and upper arrows in fig \ref{fig:time_grid}. To start this system we calculate $\mathbf{r}^{1/2}_{n,m}$ by using eq. (\ref{eq:time_shift}) and then shift to leap-frog method.
+    \section{CUDA and CPU code}
+    \section{Results and Discussion}
+    
 	\newpage
+    \section{Additional figures}
 	\pagenumbering{gobble}
-	\begin{figure}[t]
+	\begin{figure}[H]
 	  \centering
 	  \normalsize
 	  \input{plots/v_dr_of_e_dc_B=4_mu=11_dot_6_116}
@@ -620,6 +665,8 @@
 	  \caption{This shows effect of raising temperature on absorption and ASIN as functions of $\omega$ for parameters that 
 	  correspond to Fig \ref{fig:map_of_absorption_and_profiles_for_three_different_E_dc_B=4}(d)}
 	  \label{fig:E_dc=9.5_B=4_different_mu}	  
-	\end{figure}		
+	\end{figure}
+	\newpage
+	\bibliography{master}
 \end{document}
   
