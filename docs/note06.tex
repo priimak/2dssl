@@ -2,7 +2,6 @@
 \usepackage[utf8]{inputenc}
 \usepackage{float}
 \usepackage{graphicx}
-\usepackage{graphics}
 \usepackage{amsmath}
 \usepackage{amsfonts}
 \usepackage{amssymb}
@@ -13,6 +12,7 @@
 \usepackage{fullpage}
 \usepackage{tikz}
 \usepackage{caption}
+\usepackage{url}
 \DeclareGraphicsExtensions{.pdf,.png,.jpg,.eps} 
 \author{Dmitri Priimak}
 \title{High-frequency signal amplification in semiconductor super-lattice in cross electric and magnetic fields}
@@ -34,17 +34,24 @@
     \underline{Rev. 17}
   \end{center}
   \section{Introduction}  
-  A semiconductor superlattice (SL), first studied by Esaki and Tsu \cite{Esaki:70}, offers may opportunities for
-  industrial 
-  applications, some of which has been realized [*] and some are still waiting to be discovered. One of the
-  earliest studied properties of SL were Bloch oscillations \cite{BLOCH}, which would allow amplification of 
-  THz emf fields. This however did not come to fruition as there are mechanisms that destroy these 
-  oscillations, one of
-  which is formation of electron domains [*]. However 
-  tell-tale signs of Bloch oscillations were detected in experiments where transient processes of electron 
-  relaxation were studied in SL \cite{PhysRevB.56.10303}. Several different methods to stabilise Bloch oscillations were proposed [*], 
-  but experimental verification proves elusive [*]. Detailed review of SL theory and known analytical solutions 
-  can be found in work by A. Wacker \cite{WAC01}.
+  A semiconductor superlattice (SL), first studied by Esaki and Tsu \cite{Esaki:70}, is an artificial periodic
+  structure, with periods much larger than possible in the normal crystals. It offers may opportunities for
+  industrial applications, most of which have not been realized for variety of reasons. More fruitful were 
+  applications were applications of SL to the study of fundamental properties of solids. Crucial property 
+  of SL is narrowness of conduction band, often referred as "mini-band", which allows electrons to transit this
+  zone several times before experiencing collision with the crystal lattice. This property offered one of the 
+  earliest ways to observe, so called "Bloch oscillations" \cite{BLOCH}, which would allow generation of 
+  high frequency emf fields. This however did not come to fruition as there are mechanisms that destroy these 
+  oscillations, one of which is formation of electron domains [*] as well very small power output of 
+  such devices [*].
+  
+  Another very promising field is in observing reaction of SL to the external a/c emf with very practical 
+  possibilities of signal detection and amplification. Non-linearity of energy dispersion relation in the 
+  mini-band, exposed to use due to the narrowness of the mini-band, offers many intriguing possibilities for study
+  chaos as well as large signal amplification. Several different experiments were already performed 
+  \cite{PhysRevB.56.10303}, but almost infinite number of possible configurations presents a challenge and makes 
+  it all the more important farther theoretical and numerical investigation. Detailed review of SL theory and
+  known analytical solutions can be found in work by A. Wacker \cite{WAC01}.
   
   In out work we look at SL, using semi-classical theory, under action of electric field $E(t)=E_{dc}+E_\omega\cos(\omega t)$ along the 
   superlattice axis and constant perpendicular magnetic field.
@@ -54,12 +61,12 @@
 	  \includegraphics[scale=0.7]{illustrations/SL_CROSS_E_AND_B.pdf}
 	  \caption{}
 	\end{figure}
-  This configuration has already been studied in the limiting case of zero temperature \cite{PhysRevLett.103.117401}. We, however, will be 
-  looking at non-zero temperature, all the way up to the room temperature. The gist of our approach is that we 
-  will be looking at such values of $B$ and $E_{dc}$ so that SL does not operate in Bloch oscillation regime, but
-  instead is in cyclotron like mode. This way we can avoid stability problems inherent in Bloch oscillations and 
-  non-linearity of dispersion relation provides possibility of small, high frequency signal amplification, 
-  ultimately paving the way to the lasing medium.
+  The gist of this configuration is 
+  presence of two types of motion of electrons in the SL, cyclotron-like like motion and, what we may call, 
+  Bloch oscillation regime, also modified due to the presence of magnetic field.
+  This configuration has already been studied in the limiting case of zero temperature 
+  \cite{PhysRevLett.103.117401}. We, however, will be looking at non-zero temperature, all the way up to the 
+  room temperature.
   
   \section{Analytical treatment}
     We take approach of semi-classical theory based on Boltzmann equation, where, the entirety of quantum 
@@ -125,7 +132,7 @@
 	m_x=&\frac{2\hbar^2}{\Delta_1 d^2} \\
    \end{align}
    \begin{equation}
-	\boxed{\alpha=m/m_x}
+	\boxed{\alpha=m/m_x}\label{eq:alpha_def}
    \end{equation}
    Then, with cyclotron frequency defined as 
    \begin{equation}
@@ -462,10 +469,61 @@
 		\mathbf{r}^{t+1}_{n,m}=&\mathbf{T}(\mathbf{r}^t_{n,m};A^{t+1/2}_{n,m},B^{t+1/2}_{n,m}) \label{eq:leap_frog_shift_1} \\
 		\mathbf{r}^{t+3/2}_{n,m}=&\mathbf{T}(\mathbf{r}^{t+1/2}_{n,m};A^{t+1}_{n,m},B^{t+1}_{n,m}) \label{eq:leap_frog_shift_2}
 	\end{align}
-	Use of equations (\ref{eq:leap_frog_shift_1}) and (\ref{eq:leap_frog_shift_2}) is indicated by lower and upper arrows in fig \ref{fig:time_grid}. To start this system we calculate $\mathbf{r}^{1/2}_{n,m}$ by using eq. (\ref{eq:time_shift}) and then shift to leap-frog method.
+	Use of these equations is indicated by lower and upper arrows in fig \ref{fig:time_grid}. To start this system we calculate $\mathbf{r}^{1/2}_{n,m}$ by using eq. (\ref{eq:time_shift}) and then shift to leap-frog method.
     \section{CUDA and CPU code}
+    The above described numerical algorithm was implemented in C with OpenMP \cite{OpenMP} and in 
+    C CUDA \cite{CUDA,wilt2013cuda} and run on NVidia consumer grade GPGPU GTX680. In this section 
+    we look at overall implementation of the code and compare two different approaches.
+    \newpage
     \section{Results and Discussion}
+    We assume that mini-band width $\Delta_1=60$ meV and SL period $d=6$ nm. Values close to these where engineered
+    in the actual experiments. For example, in \cite{PhysRevB.56.10303} SL period is $3.8$ nm. and $\Delta_1=?$. 
+    Thus, our values of $\Delta_1$ and $d$ represent middle of the road path easily accessible to the
+    experimentalists. However, in our dimensionless form of Boltzmann equation, these parameters are encapsulated
+    in parameter $\alpha$ (\ref{eq:alpha_def}), which takes value $\alpha=0.9496$, used throughout this work. 
     
+    Looking at equations (\ref{eq:a_n_dot}) and (\ref{eq:b_n_dot}) we can branch out into several different 
+    directions based on which of the external parameters $\tilde{B}$, $\tilde{E}_{dc}$ and $\tilde{E}_\omega$ 
+    are zeroed and which are not. In this work we consider the most difficult case when all three parameters
+    are not zero at non-zero temperature, but we will also look at the case where $\tilde{E}_\omega=0$ where
+    correspondence between solutions of Boltzmann equation and classical pendulum can be most easily be seen.
+    
+    Electron density $f$ in the phase space of $(\phi_x, \phi_y)$ spreads out, starting from Boltzmann
+    distribution, under the influence of electric and magnetic fields. Typical evolution of electron density
+    looks like this. 
+    \begin{figure}[H]
+   	  \centering
+	  \normalsize % use normal font size in the figure
+	  \includegraphics[scale=0.5]{plots/example_of_time_evolution_of_f.pdf}
+	  \label{fig:example_of_time_evolution_of_f}
+	  \caption{$E_{dc}=7$ $E_\omega=0$ $\mu=11.6$ $\alpha=0.9496$ $B=4$}
+	\end{figure}
+	Where, you can see initial Boltzmann distribution shown on the frame 0 evolves through the transient 
+	processes 1,2,3 and 4 into a final, "eye" like, state seen on frame 6.
+	
+    Depending on presence or absence
+    of a/c emf, $E_\omega$, electron density function reaches either dynamic or static equilibrium. Videos of 
+    time evolution of $f(\phi_x,\phi_y)$ for several different initial parameters, with a/c emf turned on, is
+    available \footnote{\url{http://youtu.be/PMJSV7SSMlg} \url{http://youtu.be/FKYtk16-rVY}}. When 
+    $E_{\omega}=0$, we can easily see clear correspondence between phase portraits of classical pendulum and
+    electron density can be easily seen, as on the example below.
+    \begin{figure}[H]
+   	  \centering
+	  \normalsize % use normal font size in the figure
+	  \includegraphics[scale=0.5]{plots/classical_pendulum_phase_portrait_B_is_4_E_dc_is_6_point_5.pdf}
+	  \label{fig:classical_and_boltzmann_correspondence_map}
+	  \caption{}
+	\end{figure}        
+    Where $\tilde{B}=4$, $E_{dc}=6.5$ and $\mu=5$. Important feature of these plots is presence, in the phase 
+    portrait, of separatrix 
+    (shown in red) that separate "cyclotron-like" motion confined within separatrix
+    and "Bloch-like" motion that lies outside of separatrix and presence of the same pattern and two distinct
+    regions in the portrait electron density on 
+    the right. 
+    
+    In the presence of a/c emf electron density does 
+    not reach a static state, but arrives to certain dynamic equilibrium where it "breathes" in or out of sync 
+    with external oscillations.
 	\newpage
     \section{Additional figures}
 	\pagenumbering{gobble}

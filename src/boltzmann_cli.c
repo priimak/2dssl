@@ -69,7 +69,7 @@ ffloat scan_for_new_parameters() {
   char name[80];
   ffloat value, timeout;
   for(;;) {
-    int pcount = fscanf(read_from, "%s %lf %lf", name, &value, &timeout);
+    int pcount = fscanf(read_from, "%s %f %f", name, &value, &timeout);
     if( pcount == 1 && streq(name,"exit") ) {
       return -999; // this will indicate complete exit from computation
     }
