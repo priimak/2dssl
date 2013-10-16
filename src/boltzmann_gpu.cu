@@ -126,20 +126,63 @@ __global__ void _step_on_grid(ffloat *a0, ffloat *a_current,    ffloat *b_curren
   // step from (t,t+1/2) to (t+1)
   ffloat mu_t_part = (E_dc + E_omega*cos_omega_t+B*dev_phi_y(m))*dt/2;
   ffloat mu_t_plus_1_part = (E_dc + E_omega*cos_omega_t_plus_dt+B*dev_phi_y(m))*dt/2;
-
-  for( int n = 0; n < N; n++ ) {
+  ffloat b_current_hs_n_minus_1_m_plus_1  = 0;
+  ffloat b_current_hs_n_minus_1_m_minus_1 = 0;
+  ffloat a_current_hs_n_minus_1_m_plus_1  = 0;
+  ffloat a_current_hs_n_minus_1_m_minus_1 = 0;
+  ffloat b_current_hs_n_plus_1_m_plus_1;
+  ffloat b_current_hs_n_plus_1_m_minus_1;
+  ffloat a_current_hs_n_plus_1_m_plus_1;
+  ffloat a_current_hs_n_plus_1_m_minus_1;
+  for( int n = 0; n < N; n += 2 ) {
+    ffloat a_center = dnm(a_current,n,m);
+    ffloat b_center = dnm(b_current,n,m);
     ffloat mu_t = n*mu_t_part;
     ffloat mu_t_plus_1 = n*mu_t_plus_1_part;
-    ffloat g = dt*dnm(a0,n,m)+dnm(a_current,n,m)*nu_tilde-dnm(b_current,n,m)*mu_t +
-      bdt*( dnm(b_current_hs,n+1,m+1) - dnm(b_current_hs,n+1,m-1) - (n < 2 ? 0 : (dnm(b_current_hs,n-1,m+1) - dnm(b_current_hs,n-1,m-1))) );
-    ffloat h = dnm(b_current,n,m)*nu_tilde+dnm(a_current,n,m)*mu_t +
-      bdt*( (n==1?2:1)*(n==0?0:(dnm(a_current_hs,n-1,m+1)-dnm(a_current_hs,n-1,m-1))) - dnm(a_current_hs,n+1,m+1) + dnm(a_current_hs,n+1,m-1) );
+    b_current_hs_n_plus_1_m_plus_1  = dnm(b_current_hs,n+1,m+1);
+    b_current_hs_n_plus_1_m_minus_1 = dnm(b_current_hs,n+1,m-1);
+    a_current_hs_n_plus_1_m_plus_1  = dnm(a_current_hs,n+1,m+1);
+    a_current_hs_n_plus_1_m_minus_1 = dnm(a_current_hs,n+1,m-1);
+    ffloat g = dt*dnm(a0,n,m)+a_center*nu_tilde-b_center*mu_t +
+      bdt*( b_current_hs_n_plus_1_m_plus_1 - b_current_hs_n_plus_1_m_minus_1 - b_current_hs_n_minus_1_m_plus_1 + b_current_hs_n_minus_1_m_minus_1 );
+    ffloat h = b_center*nu_tilde+a_center*mu_t +
+      bdt*( a_current_hs_n_minus_1_m_plus_1 - a_current_hs_n_minus_1_m_minus_1 - a_current_hs_n_plus_1_m_plus_1 + a_current_hs_n_plus_1_m_minus_1 );
 
     ffloat xi = nu2 + mu_t_plus_1*mu_t_plus_1;
     dnm(a_next,n,m) = (g*nu - h*mu_t_plus_1)/xi;
     if( n > 0 ) {
-      dnm(b_next,n,m) = (g*mu_t_plus_1 + h*nu)/xi;
+       dnm(b_next,n,m) = (g*mu_t_plus_1 + h*nu)/xi;
     }
+    b_current_hs_n_minus_1_m_plus_1  = b_current_hs_n_plus_1_m_plus_1;
+    b_current_hs_n_minus_1_m_minus_1 = b_current_hs_n_plus_1_m_minus_1;
+    a_current_hs_n_minus_1_m_plus_1  = a_current_hs_n_plus_1_m_plus_1;
+    a_current_hs_n_minus_1_m_minus_1 = a_current_hs_n_plus_1_m_minus_1;
+  }
+  b_current_hs_n_minus_1_m_plus_1  = 0;
+  b_current_hs_n_minus_1_m_minus_1 = 0;
+  a_current_hs_n_minus_1_m_plus_1  = 2*dnm(a_current_hs,0,m+1);
+  a_current_hs_n_minus_1_m_minus_1 = 2*dnm(a_current_hs,0,m-1);
+  for( int n = 1; n < N; n += 2 ) {
+    ffloat a_center = dnm(a_current,n,m);
+    ffloat b_center = dnm(b_current,n,m);
+    ffloat mu_t = n*mu_t_part;
+    ffloat mu_t_plus_1 = n*mu_t_plus_1_part;
+    b_current_hs_n_plus_1_m_plus_1  = dnm(b_current_hs,n+1,m+1);
+    b_current_hs_n_plus_1_m_minus_1 = dnm(b_current_hs,n+1,m-1);
+    a_current_hs_n_plus_1_m_plus_1  = dnm(a_current_hs,n+1,m+1);
+    a_current_hs_n_plus_1_m_minus_1 = dnm(a_current_hs,n+1,m-1);
+    ffloat g = dt*dnm(a0,n,m)+a_center*nu_tilde-b_center*mu_t +
+      bdt*( b_current_hs_n_plus_1_m_plus_1 - b_current_hs_n_plus_1_m_minus_1 - b_current_hs_n_minus_1_m_plus_1 + b_current_hs_n_minus_1_m_minus_1);
+    ffloat h = b_center*nu_tilde+a_center*mu_t +
+      bdt*( a_current_hs_n_minus_1_m_plus_1 - a_current_hs_n_minus_1_m_minus_1 - a_current_hs_n_plus_1_m_plus_1 + a_current_hs_n_plus_1_m_minus_1 );
+
+    ffloat xi = nu2 + mu_t_plus_1*mu_t_plus_1;
+    dnm(a_next,n,m) = (g*nu - h*mu_t_plus_1)/xi;
+    dnm(b_next,n,m) = (g*mu_t_plus_1 + h*nu)/xi;
+    b_current_hs_n_minus_1_m_plus_1  = b_current_hs_n_plus_1_m_plus_1;
+    b_current_hs_n_minus_1_m_minus_1 = b_current_hs_n_plus_1_m_minus_1;
+    a_current_hs_n_minus_1_m_plus_1  = a_current_hs_n_plus_1_m_plus_1;
+    a_current_hs_n_minus_1_m_minus_1 = a_current_hs_n_plus_1_m_minus_1;
   }
 } // end of _step_on_grid(...)
 
@@ -156,18 +199,63 @@ __global__ void _step_on_half_grid(ffloat *a0, ffloat *a_current,    ffloat *b_c
   // step from (t+1/2,t+1) to (t+3/2)
   ffloat mu_t_part = (E_dc + E_omega*cos_omega_t+B*dev_phi_y(m))*dt/2;
   ffloat mu_t_plus_1_part = (E_dc + E_omega*cos_omega_t_plus_dt+B*dev_phi_y(m))*dt/2;
-  for( int n = 0; n < N; n++ ) {
+  ffloat b_next_n_minus_1_m_plus_1  = 0;
+  ffloat b_next_n_minus_1_m_minus_1 = 0;
+  ffloat a_next_n_minus_1_m_plus_1  = 0;
+  ffloat a_next_n_minus_1_m_minus_1 = 0;
+  ffloat b_next_n_plus_1_m_plus_1;
+  ffloat b_next_n_plus_1_m_minus_1;
+  ffloat a_next_n_plus_1_m_plus_1;
+  ffloat a_next_n_plus_1_m_minus_1;
+
+  for( int n = 0; n < N; n += 2 ) {
     ffloat mu_t = n*mu_t_part;
     ffloat mu_t_plus_1 = n*mu_t_plus_1_part;
-    ffloat g = dt*dnm(a0,n,m)+dnm(a_current_hs,n,m)*nu_tilde-dnm(b_current_hs,n,m)*mu_t +
-      bdt*( dnm(b_next,n+1,m+1) - dnm(b_next,n+1,m-1) - (n < 2 ? 0 : (dnm(b_next,n-1,m+1) - dnm(b_next,n-1,m-1))) );
-    ffloat h = dnm(b_current_hs,n,m)*nu_tilde+dnm(a_current_hs,n,m)*mu_t +
-      bdt*( (n==1?2:1)*(n==0?0:(dnm(a_next,n-1,m+1)-dnm(a_next,n-1,m-1))) - dnm(a_next,n+1,m+1) + dnm(a_next,n+1,m-1) );
+    ffloat a_center = dnm(a_current_hs,n,m);
+    ffloat b_center = dnm(b_current_hs,n,m);
+    b_next_n_plus_1_m_plus_1  = dnm(b_next,n+1,m+1);
+    b_next_n_plus_1_m_minus_1 = dnm(b_next,n+1,m-1);
+    a_next_n_plus_1_m_plus_1  = dnm(a_next,n+1,m+1);
+    a_next_n_plus_1_m_minus_1 = dnm(a_next,n+1,m-1);
+    ffloat g = dt*dnm(a0,n,m)+a_center*nu_tilde-b_center*mu_t +
+      bdt*( b_next_n_plus_1_m_plus_1 - b_next_n_plus_1_m_minus_1 - b_next_n_minus_1_m_plus_1 + b_next_n_minus_1_m_minus_1 );
+    ffloat h = b_center*nu_tilde+a_center*mu_t +
+      bdt*( a_next_n_minus_1_m_plus_1-a_next_n_minus_1_m_minus_1 - a_next_n_plus_1_m_plus_1 + a_next_n_plus_1_m_minus_1 );
     ffloat xi = nu2 + mu_t_plus_1*mu_t_plus_1;
     dnm(a_next_hs,n,m) = (g*nu - h*mu_t_plus_1)/xi;
     if( n > 0 ) {
       dnm(b_next_hs,n,m) = (g*mu_t_plus_1 + h*nu)/xi;
     }
+    b_next_n_minus_1_m_plus_1  = b_next_n_plus_1_m_plus_1;
+    b_next_n_minus_1_m_minus_1 = b_next_n_plus_1_m_minus_1;
+    a_next_n_minus_1_m_plus_1  = a_next_n_plus_1_m_plus_1;
+    a_next_n_minus_1_m_minus_1 = a_next_n_plus_1_m_minus_1;
+  }
+
+  b_next_n_minus_1_m_plus_1  = 0;
+  b_next_n_minus_1_m_minus_1 = 0;
+  a_next_n_minus_1_m_plus_1  = 2*dnm(a_next,0,m+1);
+  a_next_n_minus_1_m_minus_1 = 2*dnm(a_next,0,m-1);
+  for( int n = 1; n < N; n += 2 ) {
+    ffloat mu_t = n*mu_t_part;
+    ffloat mu_t_plus_1 = n*mu_t_plus_1_part;
+    ffloat a_center = dnm(a_current_hs,n,m);
+    ffloat b_center = dnm(b_current_hs,n,m);
+    b_next_n_plus_1_m_plus_1  = dnm(b_next,n+1,m+1);
+    b_next_n_plus_1_m_minus_1 = dnm(b_next,n+1,m-1);
+    a_next_n_plus_1_m_plus_1  = dnm(a_next,n+1,m+1);
+    a_next_n_plus_1_m_minus_1 = dnm(a_next,n+1,m-1);
+    ffloat g = dt*dnm(a0,n,m)+a_center*nu_tilde-b_center*mu_t +
+      bdt*( b_next_n_plus_1_m_plus_1 - b_next_n_plus_1_m_minus_1 - b_next_n_minus_1_m_plus_1 + b_next_n_minus_1_m_minus_1 );
+    ffloat h = b_center*nu_tilde+a_center*mu_t +
+      bdt*( a_next_n_minus_1_m_plus_1-a_next_n_minus_1_m_minus_1 - a_next_n_plus_1_m_plus_1 + a_next_n_plus_1_m_minus_1 );
+    ffloat xi = nu2 + mu_t_plus_1*mu_t_plus_1;
+    dnm(a_next_hs,n,m) = (g*nu - h*mu_t_plus_1)/xi;
+    dnm(b_next_hs,n,m) = (g*mu_t_plus_1 + h*nu)/xi;
+    b_next_n_minus_1_m_plus_1  = b_next_n_plus_1_m_plus_1;
+    b_next_n_minus_1_m_minus_1 = b_next_n_plus_1_m_minus_1;
+    a_next_n_minus_1_m_plus_1  = a_next_n_plus_1_m_plus_1;
+    a_next_n_minus_1_m_minus_1 = a_next_n_plus_1_m_minus_1;
   }
 } // end of _step_on_half_grid(...)
 
@@ -191,7 +279,6 @@ __global__ void av_gpu_parallel(ffloat *a, ffloat *b, ffloat *av_data, ffloat t)
   }
 
   __syncthreads();
-
 
   //for(int delta = PPP/2; delta > 0; delta /= 2 ) {
   //int delta = PPP/2;

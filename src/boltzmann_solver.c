@@ -31,11 +31,11 @@ void print_time_evolution_of_parameters(FILE *, ffloat, ffloat *, ffloat *, int,
                                         ffloat, ffloat, ffloat, ffloat,
                                         ffloat, ffloat *, ffloat);
 void print_2d_strobe(FILE *, int, ffloat *, ffloat *, ffloat *, ffloat, ffloat);
-void print_2d_data(FILE *,   int, ffloat *, ffloat *, ffloat *, ffloat);
+void print_2d_data(FILE *,   int, ffloat *, ffloat *, ffloat *, ffloat, ffloat);
 
 extern int display, host_N, quiet;
 extern ffloat host_E_dc, host_E_omega, host_omega, host_mu, host_alpha,
-  PhiYmin, PhiYmax, host_B, t_start;
+  PhiYmin, PhiYmax, host_B, t_start, frame_start;
 extern char  *out_file;
 extern FILE  *out, *read_from;
 
@@ -247,14 +247,14 @@ int main(int argc, char **argv) {
         last_tT_reminder = tT_reminder;
       }
 
-      if( display == 7 && frame_time >= 0.01 ) { // we are making movie
+      if( display == 7 && frame_time >= 0.01 && t > frame_start ) { // we are making movie
         HANDLE_ERROR(cudaMemcpy(host_a, a[current], SIZE_2Df, cudaMemcpyDeviceToHost));
         HANDLE_ERROR(cudaMemcpy(host_b, b[current], SIZE_2Df, cudaMemcpyDeviceToHost));
         sprintf(file_name_buf, "frame%08d.data", frame_number++);
         FILE *frame_file_stream = fopen(file_name_buf, "w");
         setvbuf(frame_file_stream, buf, _IOFBF, sizeof(buf));
         printf("\nWriting frame %s\n", file_name_buf);
-        print_2d_data(frame_file_stream, MSIZE, host_a0, host_a, host_b, host_alpha);
+        print_2d_data(frame_file_stream, MSIZE, host_a0, host_a, host_b, host_alpha, t);
         fclose(frame_file_stream);
         frame_time=0;
       }
@@ -312,7 +312,7 @@ int main(int argc, char **argv) {
       FILE *frame_file_stream = fopen(file_name_buf, "w");
       setvbuf(frame_file_stream, buf, _IOFBF, sizeof(buf));
       printf("\nWriting frame %s\n", file_name_buf);
-      print_2d_data(frame_file_stream, MSIZE, host_a0, host_a, host_b, host_alpha);
+      print_2d_data(frame_file_stream, MSIZE, host_a0, host_a, host_b, host_alpha, t);
       fclose(frame_file_stream);
       frame_time=0;
       return EXIT_SUCCESS;
@@ -457,7 +457,8 @@ void print_2d_strobe(FILE *out, int MSIZE, ffloat *host_a0, ffloat *host_a, fflo
 } // end of print_2d_strobe(...)
 
 // Write out distribution function to FILE *out. This used when writing data to generate animation
-void print_2d_data(FILE *out, int MSIZE, ffloat *host_a0, ffloat *host_a, ffloat *host_b, ffloat host_alpha) {
+void print_2d_data(FILE *out, int MSIZE, ffloat *host_a0, ffloat *host_a, ffloat *host_b, ffloat host_alpha, ffloat t) {
+  fprintf(out, "# t=%0.20f\n", t);
   ffloat norm = 0;
   for( int m = 1; m < 2*host_M+2; m++ ) {
     norm += nm(host_a,0,m)*host_dPhi;

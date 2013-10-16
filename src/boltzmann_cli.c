@@ -44,6 +44,9 @@ ffloat host_B = -999;
 // where T is period of external a/c emf.
 ffloat t_start = -999;
 
+// when making movie frames will be generaed staring from this time
+ffloat frame_start = 0;
+
 // output will go into file defined by this variable
 // if it is set to "-" (default value)  or "stdout" then it will go to stdout
 // and if it is set "stderr" it will go to stderr
@@ -110,6 +113,7 @@ void parse_cmd(int argc, char **argv) {
     if( streq(name, "PhiYmax")     ) { PhiYmax      = strtod(value,  NULL); } else
     if( streq(name, "B")           ) { host_B       = strtod(value,  NULL); } else
     if( streq(name, "t-max")       ) { t_start      = strtod(value,  NULL); } else
+    if( streq(name, "frame-start") ) { frame_start  = strtod(value,  NULL); } else
     if( streq(name, "dt")          ) { host_dt      = strtod(value,  NULL); } else
     if( streq(name, "g-grid")      ) { host_M       = atoi(value);          } else
     if( streq(name, "read-from")   ) { rf_name      = strdup(value);        } else
