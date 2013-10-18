@@ -27,7 +27,7 @@ gnuplot_scripts/example_of_time_evolution_of_f.py && \
 gnuplot_scripts/bunching_2_point_455.py && \
 gnuplot_scripts/bunching_2_point_455_zoom.py && \
 gnuplot_scripts/bunching_5_point_1.py && \
-gnuplot_scripts/bunching_5_point_1_zoom.py && \
+gnuplot_scripts/bunching_5_point_1_zoom.py
 # gnuplot_scripts/plot2dB=4_map.py
 # gnuplot_scripts/plot2dB=4_mesh.py
 
