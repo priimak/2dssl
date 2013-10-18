@@ -15,7 +15,8 @@
 \usepackage{url}
 \DeclareGraphicsExtensions{.pdf,.png,.jpg,.eps} 
 \author{Dmitri Priimak}
-\title{High-frequency signal amplification in semiconductor super-lattice in cross electric and magnetic fields}
+\title{On high-frequency signal amplification in semiconductor super-lattice in cross electric and magnetic fields 
+at finite temperatures}
 \begin{document}
 \bibliographystyle{plain}
 \newcommand{\ddx}[2] {
@@ -28,46 +29,43 @@
 	\frac{\text{d}^{2}#1}{\text{d}t^{2}}
 }
  \begin{center}
-  \underline{High-frequency signal amplification in semiconductor super-lattice in cross electric and magnetic fields}
+  {\bf On high-frequency signal amplification in semiconductor super-lattice in cross electric and magnetic fields 
+at finite temperatures}
  \end{center}
-  \begin{center}
-    \underline{Rev. 17}
-  \end{center}
+  \begin{abstract}
+  We analyze numerically small signal amplification in semiconductor super-lattice at finite temperatures in cross
+electric and magnetic fields. We predict significant amplification in cyclotron regime, when electrons do not reach
+edges of Brillouin zone due to folding of electron distribution function under influence of magnetic field. Also
+predicted week low frequency amplification at higher temperatures in a narrow set of parameters when distribution
+function overflows slightly over the edges of Brillouin zone.
+  \end{abstract}
   \section{Introduction}  
-  A semiconductor superlattice (SL), first studied by Esaki and Tsu \cite{Esaki:70}, is an artificial periodic
-  structure, with periods much larger than possible in the normal crystals. It offers may opportunities for
-  industrial applications, most of which have not been realized for variety of reasons. More fruitful were 
-  applications were applications of SL to the study of fundamental properties of solids. Crucial property 
-  of SL is narrowness of conduction band, often referred as "mini-band", which allows electrons to transit this
-  zone several times before experiencing collision with the crystal lattice. This property offered one of the 
-  earliest ways to observe, so called "Bloch oscillations" \cite{BLOCH}, which would allow generation of 
-  high frequency emf fields. This however did not come to fruition as there are mechanisms that destroy these 
-  oscillations, one of which is formation of electron domains [*] as well very small power output of 
-  such devices [*].
-  
-  Another very promising field is in observing reaction of SL to the external a/c emf with very practical 
-  possibilities of signal detection and amplification. Non-linearity of energy dispersion relation in the 
-  mini-band, exposed to use due to the narrowness of the mini-band, offers many intriguing possibilities for study
-  chaos as well as large signal amplification. Several different experiments were already performed 
-  \cite{PhysRevB.56.10303}, but almost infinite number of possible configurations presents a challenge and makes 
-  it all the more important farther theoretical and numerical investigation. Detailed review of SL theory and
-  known analytical solutions can be found in work by A. Wacker \cite{WAC01}.
-  
-  In out work we look at SL, using semi-classical theory, under action of electric field $E(t)=E_{dc}+E_\omega\cos(\omega t)$ along the 
-  superlattice axis and constant perpendicular magnetic field.
+A semiconductor super-lattice (SL), first studied by Esaki and Tsu \cite{Esaki:70}, is an artificial periodic structure, with periods
+much larger than possible in the normal crystals. It offers may opportunities for industrial applications, most of which
+have not been realized for variety of reasons. More fruitful were applications of SL to the study of fundamental
+properties of solids. Crucial property of SL is narrowness of conduction band, often referred as ”mini-band”, which
+allows electrons to transit this zone several times before experiencing collision with the crystal lattice. This property
+offered one of the earliest ways to observe, so called ”Bloch oscillations” \cite{BLOCH}, which would allow generation of
+high frequency emf fields. This however did not come to fruition as there are mechanisms that destroy these oscillations,
+one of which is formation of electron domains [*] as well very small power output of such devices [*].
+Another very promising field is in observing reaction of SL to the external a/c emf with very practical possibilities
+of signal detection and amplification. Non-linearity of energy dispersion relation in the mini-band, exposed to use due
+to the narrowness of the mini-band, offers many intriguing possibilities for study of chaos \cite{Alekseev2002281} and high frequency signal amplification \cite{PhysRevB.77.165330}. Several different experiments were already 
+performed \cite{PhysRevB.56.10303}, but almost infinite number of possible
+configurations presents a challenge and makes it all the more important farther theoretical and numerical investigation.
+Detailed review of SL theory and known analytical solutions can be found in work by A. Wacker \cite{WAC01}.
+In out work we look at SL, using semi-classical theory, under action of electric field 
+$E(t) = E_{dc} + E_{\omega}\cos(\omega t)$ along the superlattice axis and constant perpendicular magnetic field.
   	\begin{figure}[H]
 	  \centering
 	  \normalsize % use normal font size in the figure
 	  \includegraphics[scale=0.7]{illustrations/SL_CROSS_E_AND_B.pdf}
 	  \caption{}
 	\end{figure}
-  The gist of this configuration is 
-  presence of two types of motion of electrons in the SL, cyclotron-like like motion and, what we may call, 
-  Bloch oscillation regime, also modified due to the presence of magnetic field.
-  This configuration has already been studied in the limiting case of zero temperature 
-  \cite{PhysRevLett.103.117401}. We, however, will be looking at non-zero temperature, all the way up to the 
-  room temperature.
-  
+    The gist of this configuration is presence of two types of motion of electrons in the SL, cyclotron-like like motion
+    and, what we may call, Bloch oscillation regime, also modified due to the presence of magnetic field. This
+    configuration has already been studied in the limiting case of zero temperature \cite{PhysRevLett.103.117401}. We,
+    however, will be looking at non-zero temperature, all the way up to the room temperature.
   \section{Analytical treatment}
     We take approach of semi-classical theory based on Boltzmann equation, where, the entirety of quantum 
     mechanical nature of the SL is hidden in electron velocity $\mathbf{v}(\mathbf{k})$, which is a function of $
@@ -227,12 +225,13 @@
 	\begin{equation}
 	\tilde{E}=\tilde{E}_{dc}+\tilde{E}_{\omega}\cos(\omega t)\label{eq:tilde_E_as_a_function_of_time}
 	\end{equation}
-	and in case when magnetic field is not applied we also have analitic expression for $v_{dr}$, which is known as "Tien-Gordon" equation. Analytic expression, "Taker formulae", is also known for absorption, which we will define like this
+	and in case when magnetic field is not applied we also have analytic expression for $v_{dr}$, which is known as "Tien-Gordon" equation. In the presence of a/c emf we compute absorption $A$ and dispersion $ASIN$, which are defined as 
 	\begin{equation}
 	A=\left <\frac{v_{dr}}{v_p}\cos(\omega t) \right >_{t}
 	\end{equation}
-	In case when magnetic field is appied, however, analytic expression for absorption is not known. And that is the quantity we are most interested in.
-	
+    In the absence of magnetic field, analytic expression for absorption known as "Taker formulae" \cite{WAC01}. 
+    Not much analytically known, however, when magnetic field is applied.
+    	
 	Now due to periodicty of $f(\phi_x,\phi_y)$ along $\phi_x$ with 
 	period $2\pi$ and additionally 
 	$f_0(-\phi_x, \phi_y)=f_0(\phi_x, \phi_y)$, it makes sense 
@@ -353,7 +352,9 @@
 	    \ddt{\phi_x}=&\tilde{E}+\tilde{B}\phi_y \label{eq:semi_classical_phi_x_dot} \\
 	    \ddt{\phi_y}=&-\tilde{B}\sin(\phi_x) \label{eq:semi_classical_phi_y_dot}
     \end{align}
-    And taking second derivative of (\ref{eq:semi_classical_phi_x_dot}), assuming that $\tilde{E}$ is defined by (\ref{eq:tilde_E_as_a_function_of_time}) we arrive to second order ODE, which correspond to classical externally driven pendilum.
+    And taking second derivative of (\ref{eq:semi_classical_phi_x_dot}), assuming that $\tilde{E}$ is defined 
+    by (\ref{eq:tilde_E_as_a_function_of_time}) we arrive to second order ODE, which correspond to classical externally
+    driven pendilum.
     \begin{equation}
     	\dtwodt{\phi_x}+\tilde{B}^2\sin(\phi_x)=-\omega\tilde{E}_\omega\sin(\omega t)
     \end{equation}
@@ -443,10 +444,10 @@
 	\begin{minipage}{\linewidth}
 	\makebox[\linewidth]{
 	\begin{tikzpicture}[]
-		\draw[<-,ultra thick] (0.1,0.2) to [out=60,in=120] (3.9,0.2);
-		\draw[<-,ultra thick] (2.1,-0.2) to [out=-70,in=-110] (5.9,-0.2);
-		\draw[<-,ultra thick] (4.1,0.2) to [out=60,in=120] (7.9,0.2);
-		\draw[<-,ultra thick] (6.1,-0.2) to [out=-70,in=-110] (9.9,-0.2);
+		\draw[<-,ultra thick] (0.1,0.2) to [out=40,in=140] (3.9,0.2);
+		\draw[<-,ultra thick] (2.1,-0.2) to [out=-40,in=-140] (5.9,-0.2);
+		\draw[<-,ultra thick] (4.1,0.2) to [out=40,in=140] (7.9,0.2);
+		\draw[<-,ultra thick] (6.1,-0.2) to [out=-40,in=-140] (9.9,-0.2);
 		\draw[fill] (0, 0) circle [radius=0.1];
 		\draw[fill] (2, 0) circle [radius=0.1];
 		\draw[fill] (4, 0) circle [radius=0.1];
@@ -471,10 +472,10 @@
 	\end{align}
 	Use of these equations is indicated by lower and upper arrows in fig \ref{fig:time_grid}. To start this system we calculate $\mathbf{r}^{1/2}_{n,m}$ by using eq. (\ref{eq:time_shift}) and then shift to leap-frog method.
     \section{CUDA and CPU code}
-    The above described numerical algorithm was implemented in C with OpenMP \cite{OpenMP} and in 
-    C CUDA \cite{CUDA,wilt2013cuda} and run on NVidia consumer grade GPGPU GTX680. In this section 
-    we look at overall implementation of the code and compare two different approaches.
-    \newpage
+    The above described numerical algorithm was implemented in C with 
+    OpenMP \footnote{http://en.wikipedia.org/wiki/OpenMP} and in 
+    C CUDA \footnote{http://en.wikipedia.org/wiki/OpenMP} and run on NVidia consumer grade GPGPU GTX680. 
+    In this section we look at overall implementation of the code and compare two different approaches.
     \section{Results and Discussion}
     We assume that mini-band width $\Delta_1=60$ meV and SL period $d=6$ nm. Values close to these where engineered
     in the actual experiments. For example, in \cite{PhysRevB.56.10303} SL period is $3.8$ nm. and $\Delta_1=?$. 
@@ -485,12 +486,16 @@
     Looking at equations (\ref{eq:a_n_dot}) and (\ref{eq:b_n_dot}) we can branch out into several different 
     directions based on which of the external parameters $\tilde{B}$, $\tilde{E}_{dc}$ and $\tilde{E}_\omega$ 
     are zeroed and which are not. In this work we consider the most difficult case when all three parameters
-    are not zero at non-zero temperature, but we will also look at the case where $\tilde{E}_\omega=0$ where
+    are not zero at non-zero temperature, but we will also look at the case where $\tilde{E}_\omega=0$, where
     correspondence between solutions of Boltzmann equation and classical pendulum can be most easily be seen.
     
-    Electron density $f$ in the phase space of $(\phi_x, \phi_y)$ spreads out, starting from Boltzmann
-    distribution, under the influence of electric and magnetic fields. Typical evolution of electron density
-    looks like this. 
+    We will speak of space $(\phi_x,\phi_y)$ as a "phase space", since it is equivalent to the real phase space of 
+    the classical pendulum $(\phi_x,\text{d}\phi_x/\text{d}t)$, caveat linear transformation between $\phi_x$ and 
+    $\text{d}\phi_x/\text{d}t$ \ref{eq:semi_classical_phi_x_dot}. All of the figures in this work, showing electron 
+    density function are presented in $(\phi_x,\phi_y)$ space, with $\phi_x$ alone the $x$-axis and $\phi_y$ along
+    the $y$-axis. Electron density $f$ in the phase space $(\phi_x,\phi_y)$ spreads out, starting from Boltzmann 
+    distribution, under the influence of electric and magnetic fields. Typical evolution of electron density function
+    looks like this.
     \begin{figure}[H]
    	  \centering
 	  \normalsize % use normal font size in the figure
@@ -504,227 +509,310 @@
     Depending on presence or absence
     of a/c emf, $E_\omega$, electron density function reaches either dynamic or static equilibrium. Videos of 
     time evolution of $f(\phi_x,\phi_y)$ for several different initial parameters, with a/c emf turned on, is
-    available \footnote{\url{http://youtu.be/PMJSV7SSMlg} \url{http://youtu.be/FKYtk16-rVY}}. When 
+    available \footnote{\url{http://youtu.be/PMJSV7SSMlg}} \footnote{\url{http://youtu.be/FKYtk16-rVY}}. When 
     $E_{\omega}=0$, we can easily see clear correspondence between phase portraits of classical pendulum and
     electron density can be easily seen, as on the example below.
     \begin{figure}[H]
    	  \centering
 	  \normalsize % use normal font size in the figure
-	  \includegraphics[scale=0.5]{plots/classical_pendulum_phase_portrait_B_is_4_E_dc_is_6_point_5.pdf}
+	  \includegraphics[scale=0.45]{plots/classical_pendulum_phase_portrait_B_is_4_E_dc_is_6_point_5.pdf}
 	  \label{fig:classical_and_boltzmann_correspondence_map}
-	  \caption{}
-	\end{figure}        
-    Where $\tilde{B}=4$, $E_{dc}=6.5$ and $\mu=5$. Important feature of these plots is presence, in the phase 
-    portrait, of separatrix 
-    (shown in red) that separate "cyclotron-like" motion confined within separatrix
-    and "Bloch-like" motion that lies outside of separatrix and presence of the same pattern and two distinct
-    regions in the portrait electron density on 
-    the right. 
+	  \caption{$\tilde{B}=4$ $E_{dc}=6.5$ $\tilde{E}_{\omega}=0$ $\mu=5$ $\alpha=0.9496$}
+	\end{figure}
+	Important feature of these plots, is presence, in the phase portrait, of separatrix (shown in red), that separates
+	"cyclotron-like" motion confined within separatrix and "Bloch-like" motion that lies outside of separatrix and 
+	presence of the same pattern and two distinct regions in the portrait of electron density on the right. Note, that,
+	assuming non-zero value of $\tilde{B}$, depending on value of $\tilde{E}_{dc}$ there are three possible regimes.
+    \begin{figure}[H]
+   	  \centering
+	  \normalsize % use normal font size in the figure
+	  \includegraphics[scale=0.3]{plots/three_types_of_f.pdf}
+	  \label{fig:three_regimes}
+	  \caption{$\tilde{B}=4$ $\tilde{E}_{\omega}=0$ $\mu=116$ $\alpha=0.9496$ 
+	  and $E_{dc}$ is (a) 6, (b) 8, (c) 10. }
+	\end{figure}
+	Pure cyclotron regime seen in (a), mixed (b) and Bloch regime in (c). Note, that as temperature increase and
+	distribution function spreads out, it is possible to transition from cyclotron to mixed regime. In this work, we
+    always use value $\tilde{B} = 4$ and vary $\tilde{E}_{dc}$. 
     
-    In the presence of a/c emf electron density does 
-    not reach a static state, but arrives to certain dynamic equilibrium where it "breathes" in or out of sync 
-    with external oscillations.
-	\newpage
-    \section{Additional figures}
-	\pagenumbering{gobble}
-	\begin{figure}[H]
-	  \centering
-	  \normalsize
-	  \input{plots/v_dr_of_e_dc_B=4_mu=11_dot_6_116}
-	  \label{fig:v_dr_of_E_dc_B=4_different_mu}
-	  \caption{}
-	\end{figure}
-	\begin{figure}[H]
-	  \centering
-	  \normalsize
-	  \input{plots/m_over_m_xk_of_e_dc_B=4_mu=11_dot_6_116}
-	  \label{fig:effect1ive_mass_of_E_dc_B=4_different_mu}
-	  \caption{}
-	\end{figure}
-	\newpage
-	\begin{figure}[t]
+    In the presence of a/c emf electron density does not reach a static state, but arrives to certain dynamic 
+    equilibrium where it ”breathes” in or out of sync with external oscillations, giving us negative or positive
+    (amplification) absorption. One of the simplest ways to think about negative absorption is to correlate it with
+    negative effective mass, where electron in essence moves in the direction opposite of the applied force, thus 
+    creating an equivalent of positive feedback loop, which is commonly used technique in signal amplification and
+    generation. And indeed such amplifiers have been proposed in the past \cite{PhysRev.109.1856} and more recent 
+    works considered concept of negative effective mass in order to understand dynamics of electrons in superlattices
+    \cite{Gribnikov2002276}. However, negative effective mass is not actually necessary condition for negative absorption
+    and later we show examples when effective mass is positive while absorption is negative.
+    
+    Another important parameter, that we look at is average drift velocity along the $\phi_x$ axis, which corresponds 
+    to current flowing through the SL. Following plots link $\tilde{E}_{dc}$ and average drift velocity, i.e. 
+    voltage-current characteristic.
+   	\begin{figure}[H]
 	  \centering
 	  \normalsize % use normal font size in the figure
-	  \input{plots/v_dr_of_e_dc_B=diff}
-	  \label{fig:v_dr_of_E_dc_different_B}
-	  \caption{}
-	\end{figure}
-	\begin{figure}[H]
-	  \centering
-	  \normalsize % use normal font size in the figure
-	  \input{plots/m_over_m_xk_of_e_dc_B=diff}
-	  \label{fig:effect1ive_mass_of_E_dc_different_B}
-	  \caption{}
-	\end{figure}
-	\newpage	
-%	\begin{figure}[t] %
-%	  \centering
-%	  \normalsize % use normal font size in the figure
-%	  \input{combined_B=0_and_4_mu=116_and_1_16_E_omega=0_1}
-%	  \label{fig:combined_B=0_and_4_mu=116_and_1_16_E_omega=0_1}
-%	  \caption{}
-%	\end{figure}		
-	\begin{figure}[t]
-	  \centering
-	  \normalsize % use normal font size in the figure
-	  \input{plots/combined_B=4_mu=116_E_omega=0_1_E_dc=6_vs_6_point_4}
-	  \label{fig:combined_B=4_mu=116_E_omega=0_1_E_dc=6_vs_6_point_4}
-	  \caption{}
-	\end{figure}	
-	\begin{figure}[H]
-	  \centering
-	  \normalsize % use normal font size in the figure
-	  \input{plots/cycl_vs_bloch_gain}
-	  \label{fig:cycl_vs_bloch_gain}
-	  \caption{}
-	\end{figure}	
-	\newpage
-	\begin{figure}[t]
-	  \centering
-	  \normalsize % use normal font size in the figure
-	  \input{plots/lorentz_gain}
-	  \label{fig:lorentz_gain}
-	  \caption{}
-	\end{figure}	
-	\begin{figure}[H]
-	  \centering
-	  \normalsize % use normal font size in the figure
-	  \input{plots/gain_at_E_dc=6}
-	  \label{fig:gain_at_E_dc=6}
-	  \caption{}
-	\end{figure}
-	\newpage
-	\begin{figure}[H]
-	  \centering
-	  \normalsize % use normal font size in the figure
-	  \input{plots/vary_omega_B=4_mu=116_E_omega=0_1_E_dc=7_point_8}
-	  \label{fig:absorption_ref_E_dc_7_point_8}
-	  \caption{}
-	\end{figure}	
-	
-	\newpage	
-	\begin{figure}[t]
-	  \centering
-	  \normalsize % use normal font size in the figure
-	  \input{plots/f_of_phi_x_and_time_A=-0_point_038_full}
-	  \label{fig:negative_absorption_time_plot}
-	  \caption{}
-	\end{figure}	
-	\begin{figure}[H]
-	  \centering
-	  \normalsize % use normal font size in the figure
-	  \input{plots/f_of_phi_x_and_time_A=-0_point_038_fragment}
-	  \label{fig:negative_absorption_time_plot_zoom}
-	  \caption{}
-	\end{figure}	
-	\begin{figure}[t]
-	  \centering
-	  \normalsize % use normal font size in the figure
-	  \input{plots/f_of_phi_x_and_time_A=0_point_02_full}
-	  \label{fig:positive_absorption_time_plot}
-	  \caption{}
-	\end{figure}	
-	\begin{figure}[H]
-	  \centering
-	  \normalsize % use normal font size in the figure
-	  \input{plots/f_of_phi_x_and_time_A=0_point_02_fragment}
-	  \label{fig:positive_absorption_time_plot_zoom}
-	  \caption{}
-	\end{figure}	
-	\newpage	
-	\begin{figure}[t]
-	  \centering
-	  \normalsize % use normal font size in the figure
-	  \includegraphics[scale=0.7]{plots/v_dr_and_m_vary_E_dc_and_mu.pdf}
-	  \caption{$E_\omega=0.1$, $\omega=2.455$, $B=4$, $\alpha=0.9496$, $\mu=[1.16, 11.6, 116, 216]$}
+	  \includegraphics[scale=0.5]{plots/v_dr_and_m_vary_E_dc_and_mu.pdf}
+	  \caption{$E_\omega=0.1$, $\omega=2.455$, $B=4$, $\alpha=0.9496$}
 	  \label{fig:effect_of_temperature_in_v_dr_vary_E_dc_omega=2.455}	  
 	\end{figure}	
+	You can see that downward slope of drift velocity (shaded in light-red) closely corresponds to the negative effective
+	mass (shared in light-blue), for low temperatures ($\mu = 216$, $\mu = 116$) and less so for higher 
+	temperatures ($\mu = 11.6$ and $\mu = 1.16$ ). Similar correlation holds between negative absorption and effective
+	mass in the next figure.
 	\begin{figure}[H]
 	  \centering
 	  \normalsize % use normal font size in the figure
-	  \includegraphics[scale=0.7]{plots/A_and_m_vary_E_dc_and_mu.pdf}
+	  \includegraphics[scale=0.5]{plots/A_and_m_vary_E_dc_and_mu.pdf}
 	  \caption{$E_\omega=0.1$, $\omega=2.455$, $B=4$, $\alpha=0.9496$, $\mu=[1.16, 11.6, 116, 216]$}
 	  \label{fig:effect_of_temperature_in_A_vary_E_dc_omega=2.455}
 	\end{figure}	
-	\newpage	
-	\begin{figure}[t]
-	  \centering
-	  \normalsize % use normal font size in the figure
-	  \includegraphics[scale=0.7]{plots/v_dr_and_m_vary_E_dc_and_mu_omega=4.pdf}
-	  \caption{$E_\omega=0.1$, $\omega=4$, $B=4$, $\alpha=0.9496$, $\mu=[1.16, 11.6, 116, 216]$}
-	  \label{fig:effect_of_temperature_in_v_dr_vary_E_dc_omega=4}	  
-	\end{figure}	
+	For another value of $\omega$ situation is different. Correlation between downward slope of drift velocity and 
+	negative effective mass still holds.
 	\begin{figure}[H]
 	  \centering
 	  \normalsize % use normal font size in the figure
-	  \includegraphics[scale=0.7]{plots/A_and_m_vary_E_dc_and_mu_omega=4.pdf}
-	  \caption{$E_\omega=0.1$, $\omega=4$, $B=4$, $\alpha=0.9496$, $\mu=[1.16, 11.6, 116, 216]$}
-	  \label{fig:effect_of_temperature_in_A_vary_E_dc_omega=4}
-	\end{figure}	
-	\newpage	
-	\begin{figure}[t]
+	  \includegraphics[scale=0.5]{plots/v_dr_and_m_vary_E_dc_and_mu_omega=4.pdf}
+	  \caption{$\tilde{E}_\omega=0.1$, $\omega=4$, $\tilde{B}=4$, $\alpha=0.9496$}
+	  \label{fig:effect_of_temperature_in_v_dr_vary_E_dc_omega=4}	  
+	\end{figure}
+	but not so much between absorption and negative effective mass
+	\begin{figure}[H]
 	  \centering
 	  \normalsize % use normal font size in the figure
-	  \includegraphics[scale=0.7]{plots/absorption_maps_E_omega_is_0_point_1_mu_is_116_alpha_0_point_0496.pdf}
+	  \includegraphics[scale=0.5]{plots/A_and_m_vary_E_dc_and_mu_omega=4.pdf}
+	  \caption{$\tilde{E}_\omega=0.1$, $\omega=4$, $\tilde{B}=4$, $\alpha=0.9496$}
+	  \label{fig:effect_of_temperature_in_A_vary_E_dc_omega=4}
+	\end{figure}
+	Here you can see region of negative absorption even though effective mass is positive. Following heat maps of
+absorption and different parameters show that even better.
+	\begin{figure}[H]
+	  \centering
+	  \normalsize % use normal font size in the figure
+	  \includegraphics[scale=0.5]{plots/absorption_maps_E_omega_is_0_point_1_mu_is_116_alpha_0_point_0496.pdf}
 	  \caption{Maps of absoprtion for $E_\omega=0.1$, $\alpha=0.9496$, $\mu=116$, $\tilde{B}=[1,3,4,8]$ 
 	  (plots (a), (b), (c) and (d)) as a function of $\tilde{E}$ (on the x-axis) and $\omega$ (on the y-axis)}
 	  \label{fig:absorption}	  
-	\end{figure}	
+	\end{figure}
+	In each heat-map type plot we have $E_{dc}$ along the $x$-axis and $\tilde{\omega}$ along the $y$-axis. 
+	Dotted line show demarcation between positive and negative effective mass. To the right of it, effective map is
+	negative, to the left positive. In figure (a) it is positive everywhere. Additionally, solid black line marks all
+	points where $\Omega$ of the classical pendulum (74, 75) equals to $\tilde{\omega}$, frequency of external a/c emf.
+	Red-to-yellow hues mark positive absorption and white to dark grey mark negative absorption. Separatrix of the
+	classical pendulum is marked, by discontinuity of $\Omega$-lines. Important feature of these maps is clear present 
+	of three distinct regions of negative absorption, especially clear present when temperature decreases 
+	($\mu$ increases). One is cyclotron resonance to the left of the separatrix, Bloch resonance to right of the
+	separatrix and region right around separatrix. The last one especially interesting because it show negative
+	absorption both, at high temperatures (a) and at low frequency of a/c emf ( all maps ). We can look at map (c) in
+	greater detail.
 	\begin{figure}[H]
 	  \centering
 	  \normalsize % use normal font size in the figure
-	  \includegraphics[scale=0.7]{plots/B=4_map_and_3_A_and_Asin_plots.pdf}
+	  \includegraphics[scale=0.5]{plots/B=4_map_and_3_A_and_Asin_plots.pdf}
 	  \caption{For map of absorption (a) for $\tilde{B}=4$ we are looking at just the crossections of the
 	  map showing absorption $A$ and $ASIN$ components as a functions of $\omega$ at three different values of $E_{dc}$.
 	  Plot (b) corresponds to $E_{dc}=6.5$, (c) $E_{dc}=8.2$ and (d) $E_{dc}=9.5$. Line (e) corresponds to $E_{dc}=7.8$, 
 	  below you will find figure \ref{fig:E_dc=7.8_B=4_different_mu} that corresponds to this line. Line (f) 
 	  corresponds to $E_{dc}=7.0$, below you will find figure \ref{fig:E_dc=7.0_B=4_different_mu} that corresponds to this line.}
 	  \label{fig:map_of_absorption_and_profiles_for_three_different_E_dc_B=4}
-	\end{figure}	
-	\newpage	
-	\begin{figure}[t]
+	\end{figure}
+	Now we are going to look at the plots absorption and dispersion (ASIN) for the same lines (b), (c), (d), (e) and (f)
+for several different values of $\mu$ slowly rising temperature. While we expect, in general, rising temperature, to have
+smoothing effect on these plots as electron collisions with the lattice starts having dominating effect over everything
+else, we will some odd effects. You can see that on the very next figure that corresponds to plot (b) above.
+	\begin{figure}[H]
 	  \centering
 	  \normalsize % use normal font size in the figure
-	  \includegraphics[scale=0.7]{plots/A_and_ASIN_of_omega_E_dc_is_6_point_5_vary_mu.pdf}
-	  \caption{This shows effect of raising temperature on absorption and ASIN as functions of $\omega$ for parameters that 
-	  correspond to Fig \ref{fig:map_of_absorption_and_profiles_for_three_different_E_dc_B=4}(b)}
+	  \includegraphics[scale=0.35]{plots/A_and_ASIN_of_omega_E_dc_is_6_point_5_vary_mu.pdf}
+	  \caption{This shows effect of raising temperature on absorption and ASIN as functions of $\omega$ for 
+	  parameters that correspond to Fig \ref{fig:map_of_absorption_and_profiles_for_three_different_E_dc_B=4}(b)}
 	  \label{fig:E_dc=6.5_B=4_different_mu}	  
 	\end{figure}
+	You can see here that as temperature rises ($\mu$ goes down), so lowers absorption at $\tilde{\omega} = 0.5$ and
+	at $\mu = 3$ crosses into negative region before rising again to 0 at $\mu = 1.16$. This effect is even more
+	pronounced for Fig. \ref{fig:map_of_absorption_and_profiles_for_three_different_E_dc_B=4}(f)
 	\begin{figure}[H]
 	  \centering
 	  \normalsize % use normal font size in the figure
-	  \includegraphics[scale=0.7]{plots/A_and_ASIN_of_omega_E_dc_is_7_point_0_vary_mu.pdf}
-	  \caption{This shows effect of raising temperature on absorption and ASIN as functions of $\omega$ for parameters that 
-	  correspond to Fig \ref{fig:map_of_absorption_and_profiles_for_three_different_E_dc_B=4}(f)}
+	  \includegraphics[scale=0.35]{plots/A_and_ASIN_of_omega_E_dc_is_7_point_0_vary_mu.pdf}
+	  \caption{This shows effect of raising temperature on absorption and ASIN as functions of $\omega$ for 
+	  parameters that correspond to Fig \ref{fig:map_of_absorption_and_profiles_for_three_different_E_dc_B=4}(f)}
 	  \label{fig:E_dc=7.0_B=4_different_mu}	  
 	\end{figure}
-	\newpage
-	\begin{figure}[t]
+    where you can see that absorption becomes negative for $\tilde{\omega} = 0.5$ already at $\mu = 32.16$. This effect
+    can be attributed to the fact that at these parameters and low temperature electron distribution packet is contained
+    within the Brillouin zone in cyclotron mode, and rising temperature spreads the packet until it crosses separatix and
+    enters into Bloch regime. This process could, in principle, allow signal amplification even at room temperatures.
+    What will be important is to find right parameters for the actual semiconductor super lattice, so that we would be
+    sitting right around line (f) in figure \ref{fig:map_of_absorption_and_profiles_for_three_different_E_dc_B=4}.
+
+    However, once we come very close to separatrix $E_{dc} = 7.8$ and then cross it $E_{dc} > 8$ then suppression of
+    absorption with rising temperatures becomes much simpler as you can see in the next three figures.
+	\begin{figure}[H]
 	  \centering
 	  \normalsize % use normal font size in the figure
-	  \includegraphics[scale=0.7]{plots/A_and_ASIN_of_omega_E_dc_is_7_point_8_vary_mu.pdf}
-	  \caption{This shows effect of raising temperature on absorption and ASIN as functions of $\omega$ for parameters that 
-	  correspond to Fig \ref{fig:map_of_absorption_and_profiles_for_three_different_E_dc_B=4}(e)}
+	  \includegraphics[scale=0.35]{plots/A_and_ASIN_of_omega_E_dc_is_7_point_8_vary_mu.pdf}
+	  \caption{This shows effect of raising temperature on absorption and ASIN as functions of $\omega$ for parameters
+	  that correspond to Fig \ref{fig:map_of_absorption_and_profiles_for_three_different_E_dc_B=4}(e)}
 	  \label{fig:E_dc=7.8_B=4_different_mu}	  
+	\end{figure}
+	Notable in this figure and the next one, both of which corresponds to regime right around separatrix, that negative
+	absorption is preserved even as temperature rises essentially to room temperature $\mu = 1.16$. However, stability of
+	amplification of around separatix is questionable since corresponding classical pendulum is known to exhibit chaos in
+	this regime.
+	\begin{figure}[H]
+	  \centering
+	  \normalsize % use normal font size in the figure
+	  \includegraphics[scale=0.35]{plots/A_and_ASIN_of_omega_E_dc_is_8_point_2_vary_mu.pdf}
+	  \caption{This shows effect of raising temperature on absorption and ASIN as functions of $\omega$ for parameters 
+	  that correspond to Fig \ref{fig:map_of_absorption_and_profiles_for_three_different_E_dc_B=4}(c)}
+	  \label{fig:E_dc=8.2_B=4_different_mu}
 	\end{figure}
 	\begin{figure}[H]
 	  \centering
 	  \normalsize % use normal font size in the figure
-	  \includegraphics[scale=0.7]{plots/A_and_ASIN_of_omega_E_dc_is_8_point_2_vary_mu.pdf}
-	  \caption{This shows effect of raising temperature on absorption and ASIN as functions of $\omega$ for parameters that 
-	  correspond to Fig \ref{fig:map_of_absorption_and_profiles_for_three_different_E_dc_B=4}(c)}
-	  \label{fig:E_dc=8.2_B=4_different_mu}	  
-	\end{figure}
-	\newpage
-	\begin{figure}[t]
-	  \centering
-	  \normalsize % use normal font size in the figure
-	  \includegraphics[scale=0.7]{plots/A_and_ASIN_of_omega_E_dc_is_9_point_5_vary_mu.pdf}
-	  \caption{This shows effect of raising temperature on absorption and ASIN as functions of $\omega$ for parameters that 
-	  correspond to Fig \ref{fig:map_of_absorption_and_profiles_for_three_different_E_dc_B=4}(d)}
+	  \includegraphics[scale=0.35]{plots/A_and_ASIN_of_omega_E_dc_is_9_point_5_vary_mu.pdf}
+	  \caption{This shows effect of raising temperature on absorption and ASIN as functions of $\omega$ for parameters 
+	  that correspond to Fig \ref{fig:map_of_absorption_and_profiles_for_three_different_E_dc_B=4}(d)}
 	  \label{fig:E_dc=9.5_B=4_different_mu}	  
 	\end{figure}
+    One of the way that we can use to understand signal absorption and amplification in SL is to consider formation
+    of bunches in $k$-space. In vacuum electronics this effect is known as bunching and can be studied in both, real and
+    momentum spaces. In our case visualization of bunches in momentum space would require, hard to understand and
+    visualize, electron density plot in three dimensions $f(\phi_x, \phi_y, t)$. To make that task more manageable we
+    reduce dimensionality of $f$ through integration
+    \begin{equation}
+        f(\phi_x,t)=\int^{\infty}_{-\infty}f(\phi_x,\phi_y,t)\text{d}\phi_x
+    \end{equation}
+    We correlate this heat-map plot with drift velocity and a/c component of external field. Note that, instead of time 
+    $t$ we use $\tilde{\omega}t$. First we look at case of strong negative absorption at $\tilde{\omega} = 2.455$ that
+    corresponds to local a minimum, a blue line ($\mu = 116$) in figure \ref{fig:E_dc=7.8_B=4_different_mu}. At the
+    bottom of the plot you see external a/c emf component time evolution shown as black line, also overlaid as a white
+    live over the main part of distribution function, and the drift velocity as a function of time is shown at the bottom
+    section in red. Both $v_{dr}$ and a/c emf component are scaled to be comparable to each other, so that we can easily
+    compare them.
+	\begin{figure}[H]
+	  \centering
+	  \normalsize % use normal font size in the figure
+	  \includegraphics[scale=0.5]{plots/bunching_2_point_455.pdf}
+	  \caption{}	  
+	\end{figure}
+	Both $v_{dr}$ and a/c emf component are scaled to be comparable to each other, so that we can easily compare them.
+	You can see that they, $v_{dr}$ and a/c emf, are almost completely out of phase, giving rise to strong negative
+	absorption. It is also easy to see bunches in $k$-space (or $\phi$-space in our case ) at the bottom of the density
+	map. It	is important to note that presence of electron density in negative region of $\phi_x$ is due to the magnetic
+	field wrapping $f(\phi_x; \phi_y)$ and not to crossing of the Brillouin zone boundaries. To better see bunching in
+	the positive region of $\phi_x$ we need to zoom in, result of which is shown in the next figure.
+	\begin{figure}[H]
+	  \centering
+	  \normalsize % use normal font size in the figure
+	  \includegraphics[scale=0.5]{plots/bunching_2_point_455_zoom.pdf}
+	  \caption{}	  
+	\end{figure}
 	\newpage
-	\bibliography{master}
+    A similar map can be plotted for a case of strong positive absorption.
+	\begin{figure}[H]
+	  \centering
+	  \normalsize % use normal font size in the figure
+	  \includegraphics[scale=0.5]{plots/bunching_5_point_1.pdf}
+	  \caption{}	  
+	\end{figure}
+	which corresponds to the local maximum of absorption at $\tilde{\omega} = 2.455$, a blue line ($\mu = 116$) 
+	in figure \ref{fig:E_dc=7.8_B=4_different_mu}. And zooming of this map.
+	\begin{figure}[H]
+	  \centering
+	  \normalsize % use normal font size in the figure
+	  \includegraphics[scale=0.5]{plots/bunching_5_point_1_zoom.pdf}
+	  \caption{}	  
+	\end{figure}    
+	Here you can see similar bunches formed in the k-space, but $v_{dr}$ (red line) as function of time is almost
+    completely in phase with external a/c emf (black line).
+    \section{Conclusions}
+    We predicted two small signal amplification regimes that differ from widely discussed Bloch gain regime. One is for
+    high frequency signal when SL operates in cyclotron regime, which mainly manifest at low temperatures. And another
+    is one for low frequency signal when, for a narrow set of parameters, electron distribution slightly overflows over
+    the edge of the Brillouin zone. This research can be extended in several directions. One, is farther theoretical
+    study of SL in presence of magnetic field. Specifically, study of stability of amplification, especially around
+    separatix. Also, it is important to look at the case where spacial homogeneity is not assumed and verify that
+    electron bunching in real space does not occur or if it does that it is does not destroy picture of small signal
+    amplification presented in this paper. Strong signal amplification should also be considered as it should expose
+    nonlinearity of dispersion relation even more and is a very interesting topic to consider. On experimental front,
+    verification of our findings would be most welcome.    
+  	\bibliography{master}
+   	\newpage
+    \section{Additional figures}
+	\begin{figure}[H]
+	  \centering
+	  \normalsize
+	  \input{plots/v_dr_of_e_dc_B=4_mu=11_dot_6_116}
+	  \label{fig:v_dr_of_E_dc_B=4_different_mu}
+	  \caption{Here we are looking at effect of rising temperature of, essentially, voltage to current characteristic,
+	  since current is proportional to $v_{dr}$, which is along the $y$-axis and voltage across SL is proportional to 
+	  $E_{dc}$, which is along the $x$-axis. Also, a/a component is is not present, $E_{\omega} = 0$. For reference we
+	  show Esaki-Tsu characteristic, which correspond to absence of magnetic field, analytical expression for which
+	  is well known. You can see that as temperature lowers ($\mu$ rises) $v_{dr}$ as a function of $E_{dc}$ behaves
+	  more and more linearly for $E_{dc} < 7$ and undergoes sudden step-like drop around $E_{dc} = 8$. Rising temperature
+	  (lowering $\mu$), naturally, removes the step and smoothes whole plot.}
+	\end{figure}
+	\newpage
+	\begin{figure}[H]
+	  \centering
+	  \normalsize
+	  \input{plots/m_over_m_xk_of_e_dc_B=4_mu=11_dot_6_116}
+	  \label{fig:effect1ive_mass_of_E_dc_B=4_different_mu}
+	  \caption{Here we are looking affective mass as a function of $E_{dc}$, that correspond to the previous figure. 
+	  You can see that when slope of $v_{dr} = f(E_{dc})$ becomes negative effective mass becomes negative as well. 
+	  For reference, case of B = 0 is drawn as black line showing positive effective mass everywhere.}
+	\end{figure}
+	\newpage
+	\begin{figure}[H]
+	  \centering
+	  \normalsize % use normal font size in the figure
+	  \input{plots/v_dr_of_e_dc_B=diff}
+	  \label{fig:v_dr_of_E_dc_different_B}
+	  \caption{Here, again, we do not have a/c emf ($E_{dc} = 0$) are looking at how increasing strength of magnetic field
+affects voltage-current characteristic. Temperature here is very low, $\mu = 116$, which roughly corresponds 
+to 3 Kelvin.}
+	\end{figure}
+	\newpage
+	\begin{figure}[H]
+	  \centering
+	  \normalsize % use normal font size in the figure
+	  \input{plots/m_over_m_xk_of_e_dc_B=diff}
+	  \label{fig:effect1ive_mass_of_E_dc_different_B}
+	  \caption{This plot corresponds to the one above (previous figure) and clearly shows how presence of magnetic field
+	  pushes effective mass into negative region when slope of $v_{dr} = f(E_{dc})$ becomes negative.}
+	\end{figure}
+	\newpage
+	\begin{figure}[H]
+	  \centering
+	  \normalsize % use normal font size in the figure
+	  \input{plots/cycl_vs_bloch_gain}
+	  \label{fig:cycl_vs_bloch_gain}
+	  \caption{In this picture we are drawing absorption as a function of $\tilde{\omega}$ with magnetic field turned on
+	  $B = 4$ and turned off $B = 0$. We take $E_{dc} = 6.5$, which for $B = 4$ corresponds to plot (b) in figure 
+	  \ref{fig:map_of_absorption_and_profiles_for_three_different_E_dc_B=4}. We can see that both, negative and 
+	  positive absorption are much stronger than for corresponding Bloch regime ($B = 0$)}
+	\end{figure}	
+	\newpage
+	\begin{figure}[H]
+	  \centering
+	  \normalsize % use normal font size in the figure
+	  \input{plots/lorentz_gain}
+	  \label{fig:lorentz_gain}
+	  \caption{In this picture we validate our algorithm and code by comparing absorption at finite, but very low 
+	  temperature $\mu = 113$, with well known Lorentz gain profile shown in black squares, which corresponds 
+	  to $\mu = \infty$. Plot of black squares was scanned from \cite{PhysRevLett.103.117401} (Figure 1c). 
+	  You can see here good correspondence proving correctness of of our approach.}
+	\end{figure}	
+	\begin{figure}[H]
+	  \centering
+	  \normalsize % use normal font size in the figure
+	  \input{plots/gain_at_E_dc=6}
+	  \label{fig:gain_at_E_dc=6}
+	  \caption{Similarly to previous plot, in this figure we validate numerical code by comparing solution 
+	  at $\mu = \infty$, shown in the black squares, from \cite{PhysRevLett.103.117401} (Figure 1d) with 
+	  numerical solution (in red) $\mu = 116$, which is close enough to 0 temperature. You can see here good
+	  correspondence proving correctness of of our approach.}
+	\end{figure}
 \end{document}
   
