@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.mlab      import griddata
 
-fig  = plt.figure()
+fig  = plt.figure(figsize=(18, 6))
 fig.subplots_adjust(left=0.05, right=0.97, top=0.93, wspace=0.13, hspace=0.27)
 
 data = \
@@ -24,23 +24,23 @@ np.genfromtxt('B=4/B_is_4_E_omega_is_0.1_mu_is_116_alpha_0.9496_E_dc_is_9.5_vary
 xnew = np.linspace(5, 10, 200)
 
 ax = fig.add_subplot(121)
-ax.set_title('$A$')
+ax.set_title('$A$', fontsize='xx-large')
 ax.xaxis.set_ticks([0,10])
 ax.yaxis.set_ticks([0])
 
 index = np.asarray([row['mu'] > 1.15999995 and row['mu'] < 1.15999999 for row in data])
 fdata = data[index]
-p1 = ax.plot(fdata['omega'], fdata['A'], color='#ff0000', lw=2)
+p1 = ax.plot(fdata['omega'], fdata['A'], color='#ff0000', lw=3)
 
 index = np.asarray([row['mu'] > 11 and row['mu'] < 12 for row in data])
 fdata = data[index]
-p1 = ax.plot(fdata['omega'], fdata['A'], color='#33aaaa', lw=2)
+p1 = ax.plot(fdata['omega'], fdata['A'], color='#33aaaa', lw=3)
 
 index = np.asarray([row['mu'] > 32 and row['mu'] < 33 for row in data])
 fdata = data[index]
-p1 = ax.plot(fdata['omega'], fdata['A'], color='#00bbff', lw=2)
+p1 = ax.plot(fdata['omega'], fdata['A'], color='#00bbff', lw=3)
 
-p1 = ax.plot(data2['omega'], data2['A'], color='#0000ff', lw=2)
+p1 = ax.plot(data2['omega'], data2['A'], color='#0000ff', lw=3)
 
 ax.legend(['$\mu=1.16$', '$\mu=11.16$', '$\mu=32.16$', '$\mu=116$'], loc='best')
 
@@ -48,26 +48,26 @@ p5 = ax.plot([0,10], [0,0], color='black', lw=1.2, ls='dashed')
 
 ax.set_xlim(0,10)
 ax.set_ylim(-0.03,0.026)
-ax.set_xlabel('$\\tilde{\omega}$')
+ax.set_xlabel('$\\tilde{\omega}$', fontsize='xx-large')
 
 ax = fig.add_subplot(122)
-ax.set_title('$ASIN$')
+ax.set_title('$ASIN$', fontsize='xx-large')
 ax.xaxis.set_ticks([0,10])
 ax.yaxis.set_ticks([0])
 
 index = np.asarray([row['mu'] > 1.15999995 and row['mu'] < 1.15999999 for row in data])
 fdata = data[index]
-p1 = ax.plot(fdata['omega'], fdata['ASIN'], color='#ff0000', lw=2)
+p1 = ax.plot(fdata['omega'], fdata['ASIN'], color='#ff0000', lw=3)
 
 index = np.asarray([row['mu'] > 11 and row['mu'] < 12 for row in data])
 fdata = data[index]
-p1 = ax.plot(fdata['omega'], fdata['ASIN'], color='#33aaaa', lw=2)
+p1 = ax.plot(fdata['omega'], fdata['ASIN'], color='#33aaaa', lw=3)
 
 index = np.asarray([row['mu'] > 32 and row['mu'] < 33 for row in data])
 fdata = data[index]
-p1 = ax.plot(fdata['omega'], fdata['ASIN'], color='#00bbff', lw=2)
+p1 = ax.plot(fdata['omega'], fdata['ASIN'], color='#00bbff', lw=3)
 
-p1 = ax.plot(data2['omega'], data2['ASIN'], color='#0000ff', lw=2)
+p1 = ax.plot(data2['omega'], data2['ASIN'], color='#0000ff', lw=3)
 
 ax.legend(['$\mu=1.16$', '$\mu=11.16$', '$\mu=32.16$', '$\mu=116$'], loc='best')
 
@@ -75,7 +75,7 @@ p5 = ax.plot([0,10], [0,0], color='black', lw=1.2, ls='dashed')
 
 ax.set_xlim(0,10)
 ax.set_ylim(-0.043,0.007)
-ax.set_xlabel('$\\tilde{\omega}$')
+ax.set_xlabel('$\\tilde{\omega}$', fontsize='xx-large')
 
 #plt.show()
 outfile="plots/A_and_ASIN_of_omega_E_dc_is_9_point_5_vary_mu.pdf"
