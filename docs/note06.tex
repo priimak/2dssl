@@ -51,10 +51,11 @@ high frequency emf fields. This however did not come to fruition as there are me
 one of which is formation of electron domains [*] as well very small power output of such devices [*].
 Another very promising field is in observing reaction of SL to the external a/c emf with very practical possibilities
 of signal detection and amplification. Non-linearity of energy dispersion relation in the mini-band, exposed to use due
-to the narrowness of the mini-band, offers many intriguing possibilities for study of chaos \cite{Alekseev2002281} and high frequency signal amplification \cite{PhysRevB.77.165330}. Several different experiments were already 
-performed \cite{PhysRevB.56.10303}, but almost infinite number of possible
-configurations presents a challenge and makes it all the more important to perform farther theoretical and numerical investigations.
-Detailed review of SL theory and known analytical solutions can be found in work by A. Wacker \cite{WAC01}.
+to the narrowness of the mini-band, offers many intriguing possibilities for study of chaos \cite{Alekseev2002281} and 
+high frequency signal amplification \cite{PhysRevB.77.165330}. Several different experiments were already 
+performed \cite{PhysRevB.56.10303}, but almost infinite number of possible configurations presents a challenge and makes 
+it all the more important to perform farther theoretical and numerical investigations. Detailed review of SL theory and 
+known analytical results can be found in work by A. Wacker \cite{WAC01}.
 In our work we look at SL, using semi-classical theory, under the influence of electric field 
 $E(t) = E_{dc} + E_{\omega}\cos(\omega t)$ along the superlattice axis and perpendicular to it, constant magnetic field $B$, as it
 is shown in the following figure.
@@ -443,7 +444,12 @@ is shown in the following figure.
 		\mathbf{r}^{t+1}_{n,m}=&\mathbf{T}(\mathbf{r}^t_{n,m};A^t_{n,m},B^t_{n,m}) \label{eq:time_shift} \\
 		\mathbf{r}^{t}_{n,m}=&(a^t_{n,m}, b^t_{n,m})
 	\end{align}
-	Where $\mathbf{T}$ is an operator that allows us to step from time step $t$ to $t+1$, separated by time interval $\Delta t$. Using this operation as is leads to, only, conditionally stable numerical system, because $A^t_{n,m}$ and $B^t_{n,m}$ are taken at time $t$, which means that we have to take time step $dt$ to be very, very small. To make time step much larger without solving implicit equations, to calculate $a^{t+1}_{n,m}$ and $b^{t+1}_{n,m}$ we will utilize variation of leap-frog method, by using two staggered girds.
+	Where $\mathbf{T}$ is an operator that allows us to step from time step $t$ to $t+1$, separated by time interval $\Delta t$. 
+	Using this operation as is leads to, only, conditionally stable numerical system, because $A^t_{n,m}$ and $B^t_{n,m}$ are 
+	taken at time $t$, which means that we have to take time step $dt$ to be very, very small. To make time step much larger 
+	without solving implicit equations, to calculate $a^{t+1}_{n,m}$ and $b^{t+1}_{n,m}$ we will utilize variation of leap-frog 
+	method, by using two staggered girds as shown in the following picture
+	
 	\begin{minipage}{\linewidth}
 	\makebox[\linewidth]{
 	\begin{tikzpicture}[]
@@ -474,73 +480,6 @@ is shown in the following figure.
 		\mathbf{r}^{t+3/2}_{n,m}=&\mathbf{T}(\mathbf{r}^{t+1/2}_{n,m};A^{t+1}_{n,m},B^{t+1}_{n,m}) \label{eq:leap_frog_shift_2}
 	\end{align}
 	Use of these equations is indicated by lower and upper arrows in fig \ref{fig:time_grid}. To start this system we calculate $\mathbf{r}^{1/2}_{n,m}$ by using eq. (\ref{eq:time_shift}) and then shift to leap-frog method.
-    \section{CUDA and CPU code}
-    The above described numerical algorithm was implemented in C with 
-    OpenMP \footnote{http://en.wikipedia.org/wiki/OpenMP} and in 
-    C CUDA \footnote{http://en.wikipedia.org/wiki/CUDA} and run on NVidia consumer grade GPGPU GTX680. 
-    In this section we look at overall implementation of the code and compare two different approaches.
-    Both approaches utilize the same data-structures, but abundance of ALUs in GPU makes i/o to and from memory 
-    the main bottleneck, which in turn creates need for memory access optimizations that are not needed in 
-    straightforward CPU implementation. 
-    
-    In total 9 of two dimensional arrays are employed. They are $\mathbf{a}^{(0)}$, $\mathbf{a}^{(1)}_{even}$, 
-    $\mathbf{a}^{(2)}_{even}$, $\mathbf{b}^{(1)}_{even}$, $\mathbf{b}^{(2)}_{even}$, and odd counterparts that 
-    hold values of $a_{n,m}$ and $b_{n,m}$ on the staggered (odd) grid $\mathbf{a}^{(1)}_{odd}$, 
-    $\mathbf{a}^{(2)}_{odd}$, $\mathbf{b}^{(1)}_{odd}$, $\mathbf{b}^{(2)}_{odd}$. The reason for two arrays for 
-    both $a_{n,m}$ and $b_{n,m}$ on each grid is that at each given moment in time one serves as the one holding 
-    known values and another one serves as target were values at time $t+\Delta t$ are accumulated. All of the arrays 
-    are laid out as following
-    \begin{figure}[H]
-   	  \centering
-	  \normalsize % use normal font size in the figure
-	  \includegraphics[scale=1.2]{illustrations/array_layout.pdf}
-	  \label{fig:array_layout}
-	  \caption{}
-	\end{figure}
-	where elements in greyed out cells are always $0$, which allows us to avoid checking continuously if we are at the 
-	edge of computation domain. For the reasons that will become clear later we do not need similar buffer for $n=0$ elements, 
-	i.e. first row. Also shown a cross pattern indicating which elements are accessed to compute $a_{n,m}$ or $b_{n,m}$ at 
-	the next moment in time, which are $a^{(0)}_{n,m}$, $a_{n-1,m-1}$, $a_{n-1,m+1}$, $a_{n+1,m-1}$, $a_{n+1,m-1}$ and 
-	same elements in $\mathbf{b}$ array. And since our two dimensional array is actually a one dimensional one with rows 
-	top to bottom laying one after another, spacial locality of these elements seen in 2D view is broken in actual 1D layout.
-	To combat this problem we could use Z-indexing to bring these elements into a close proximity in 1D array. However that 
-	comes at the expense of making indexing within the array much more complicated and, as our experiments show, does not 
-	bring much of benefit as far as reducing computational time. In strait C implementation, to compute next values 
-	of $a$ and $b$ we have two loops 
-	\begin{alltt}
-    for( m = 1 .. M+1 ) \{
-        for( n = 0 .. N ) \{
-            a(next,n,m), b(next,n,m) = TIME_STEP( a(current), b(current) )
-        \}
-    \}
-	\end{alltt}
-	This operation is repeated for staggered grid. When using OpenMP outer loop is instructed to be executed in parallel, 
-	which is of course limited by the number of cores. And when using CUDA, inner loop becomes kernel, $M+1$ executions of 
-	which are partitioned among certain number of blocks and threads per block, which ratio is found experimentally to minimize 
-	execution time. For GPU/CUDA code to minimize impact of uncoalesced memory access, we partially unroll the inner loop 
-	and use local registers to store $a^{current}_{n+1,m\pm 1}$ and $b^{current}_{n+1,m\pm 1}$ to be reused as
-	$a^{current}_{n-1,m\pm 1}$ and $b^{current}_{n-1,m\pm 1}$ at $n+2$ step. This unrolling procedure can be extended 
-	improving performance until register memory overflows and performance drops. Note, that since each thread executes 
-	whole inner loop we, essentially, relying on instruction level parallelism to archive higher performance than if 
-	we used innermost part only of the above code as the kernel. Two loops described above and another one for the staggered grid
-	are wrapped into a larger loop that advances time from $0$ until some predefined $t_{max}+T$, where $T$ is period of external
-	a/c emf. Starting from $t_{max}$ to $t_{max}+T$, additionally, we have perform reduction of $a_{0,m}$, $a_{1,m}$ and $b_{1,m}$
-	and then averaging over period $T$ to compute averaged drift velocities along $x$ and $y$ axis, effective mass, absorption $A$,
-	$ASIN$ and norm of distribution function. The last one serves as an overall check of correctness of our calculations. In all
-	of the results presented norm of distribution function was never more than $0.01$ off from $1$, i.e. deviation from $1$ was 
-	always less than 1\% and often was much less. Following table shows computation time for a some specific parameter values,
-	averaged over $10$ runs for three different versions the program, CPU (one core), CPU+OpenMP (8 cores) and GPU (GTX680), 
-	where CPU used is "Intel Core i7-3770" running at 3.40GHz.
-%    \begin{center}
-%    \begin{tabular}{| l | l | l |}
-%    \hline
-%    CPU i7 & CPU i7 + OpenMP & GPU \\ \hline
-%    N/A & N/A & N/A \\ \hline
-%    \end{tabular}
-%    \end{center}
-%    Important for us here, not specific execution time, but relative one, which shows that GTX680 GPGPU is roughly equivalent 
-%    to 70 cores of Intel i7 archiving performance of much more powerful system at the fraction of the cost.
-        
     \section{Results and Discussion}
     We assume that mini-band width $\Delta_1=60$ meV and SL period $d=6$ nm. Values close to these where engineered
     in the actual experiments. For example, in \cite{PhysRevB.56.10303} SL period is $3.8$ nm. and $\Delta_1=?$. 
@@ -556,7 +495,7 @@ is shown in the following figure.
     
     We will speak of space $(\phi_x,\phi_y)$ as a "phase space", since it is equivalent to the real phase space of 
     the classical pendulum $(\phi_x,\text{d}\phi_x/\text{d}t)$, caveat linear transformation between $\phi_x$ and 
-    $\text{d}\phi_x/\text{d}t$ \ref{eq:semi_classical_phi_x_dot}. All of the figures in this work, showing electron 
+    $\text{d}\phi_x/\text{d}t$ (\ref{eq:semi_classical_phi_x_dot}). All of the figures in this work, showing electron 
     density function are presented in $(\phi_x,\phi_y)$ space, with $\phi_x$ alone the $x$-axis and $\phi_y$ along
     the $y$-axis. Electron density $f$ in the phase space $(\phi_x,\phi_y)$ spreads out, starting from Boltzmann 
     distribution, under the influence of electric and magnetic fields. Typical evolution of electron density function
@@ -566,7 +505,11 @@ is shown in the following figure.
 	  \normalsize % use normal font size in the figure
 	  \includegraphics[scale=0.5]{plots/example_of_time_evolution_of_f.pdf}
 	  \label{fig:example_of_time_evolution_of_f}
-	  \caption{$E_{dc}=7$ $E_\omega=0$ $\mu=11.6$ $\alpha=0.9496$ $B=4$}
+	  \caption{Example of time evolution of electron density function under influence of static electric
+	  $E_{dc}=7$, $E_{\omega}=0$ and magnetic fields $\tilde{B}=4$ and other parameters being $\mu=11.6$ 
+	  $\alpha=0.9496$, from it initial state of Boltzmann distribution (shown on frame 0) through 
+	  successive stages shown on frames 1,2,3,4 until it reaches final stationary state (frame 5). Distribution 
+	  function shown in $\phi_x$ (along that $x$-axis) and $\phi_y$ (along the $y$-axis) coordinates.}
 	\end{figure}
 	Where, you can see initial Boltzmann distribution shown on the frame 0 evolves through the transient 
 	processes 1,2,3 and 4 into a final, "eye" like, state seen on frame 6.
@@ -581,8 +524,12 @@ is shown in the following figure.
    	  \centering
 	  \normalsize % use normal font size in the figure
 	  \includegraphics[scale=0.45]{plots/classical_pendulum_phase_portrait_B_is_4_E_dc_is_6_point_5.pdf}
-	  \label{fig:classical_and_boltzmann_correspondence_map}
-	  \caption{$\tilde{B}=4$ $E_{dc}=6.5$ $\tilde{E}_{\omega}=0$ $\mu=5$ $\alpha=0.9496$}
+	  \label{fig:classical_and_Boltzmann_correspondence_map}
+	  \caption{$\tilde{B}=4$ $E_{dc}=6.5$ $\tilde{E}_{\omega}=0$ $\mu=5$ $\alpha=0.9496$
+	  Correspondence between phase portrait, in ($\phi_x$, $\phi_y$) coordinates, of classical pendulum and final
+	  stationary state of electron density distribution function can be clearly seen here. Note, that relation
+	  between proper phase portrait coordinates of classical pendulum ($\phi_x$, $\dot{\phi}_x$) and the one 
+	  used here is defined by by equation (\ref{eq:semi_classical_phi_x_dot}).}
 	\end{figure}
 	Important feature of these plots, is presence, in the phase portrait, of separatrix (shown in red), that separates
 	"cyclotron-like" motion confined within separatrix and "Bloch-like" motion that lies outside of separatrix and 
@@ -594,11 +541,15 @@ is shown in the following figure.
 	  \includegraphics[scale=0.3]{plots/three_types_of_f.pdf}
 	  \label{fig:three_regimes}
 	  \caption{$\tilde{B}=4$ $\tilde{E}_{\omega}=0$ $\mu=116$ $\alpha=0.9496$ 
-	  and $E_{dc}$ is (a) 6, (b) 8, (c) 10. }
+	  and $E_{dc}$ is (a) 6, (b) 8 and (c) 10. Here we are looking at three different distinct regimes for a
+	  case of static electric and magnetic fields. Plot (a) shows pure cyclotron regime at $E_{dc}\ll E_{sx}$.
+	  Plot (b) $E_{dc}\approx E_{sx}$ shows mixed regime where cyclic orbit still exists, but part of electron
+	  density is on outside of separatrix and crosses edges of Brillouin zone. Plot (c) shows pure Bloch regime,
+	  which is, however, distorted by magnetic field. The cyclic orbit is completely absent in this regime.}
 	\end{figure}
 	Pure cyclotron regime seen in (a), mixed (b) and Bloch regime in (c). Note, that as temperature increase and
-	distribution function spreads out, it is possible to transition from cyclotron to mixed regime. In this work, we
-    always use value $\tilde{B} = 4$ and vary $\tilde{E}_{dc}$. 
+	distribution function spreads out, it is possible to transition from cyclotron to mixed regime. In this work, 
+	we always use value $\tilde{B} = 4$ and vary $\tilde{E}_{dc}$. 
     
     In the presence of a/c emf electron density does not reach a static state, but arrives to certain dynamic 
     equilibrium where it ”breathes” in or out of sync with external oscillations, giving us negative or positive
@@ -606,9 +557,10 @@ is shown in the following figure.
     negative effective mass, where electron in essence moves in the direction opposite of the applied force, thus 
     creating an equivalent of positive feedback loop, which is commonly used technique in signal amplification and
     generation. And indeed such amplifiers have been proposed in the past \cite{PhysRev.109.1856} and more recent 
-    works considered concept of negative effective mass in order to understand dynamics of electrons in superlattices
-    \cite{Gribnikov2002276}. However, negative effective mass is not actually necessary condition for negative absorption
-    and later we show examples when effective mass is positive while absorption is negative.
+    works considered concept of negative effective mass in order to understand dynamics of electrons in
+    superlattices \cite{Gribnikov2002276}. However, negative effective mass is not actually necessary condition 
+    for negative absorption and later we show examples when effective mass is positive while absorption is
+    negative.
     
     Another important parameter, that we look at is average drift velocity along the $\phi_x$ axis, which corresponds 
     to current flowing through the SL. Following plots link $\tilde{E}_{dc}$ and average drift velocity, i.e. 
@@ -652,12 +604,7 @@ is shown in the following figure.
 absorption and different parameters show that even better.
 	\begin{figure}[H]
 	  \centering
-	  \normalsize % use normal font size in the figure
-	  
-	 
-	 
-asd	  
-	  
+	  \normalsize % use normal font size in the figure	  
 	  \includegraphics[scale=0.5]{plots/absorption_maps_E_omega_is_0_point_1_mu_is_116_alpha_0_point_0496.pdf}
 	  \caption{Maps of absoprtion for $E_\omega=0.1$, $\alpha=0.9496$, $\mu=116$, $\tilde{B}=[1,3,4,8]$ 
 	  (plots (a), (b), (c) and (d)) as a function of $\tilde{E}$ (on the x-axis) and $\omega$ (on the y-axis)}
@@ -725,10 +672,10 @@ else, we will some odd effects. You can see that on the very next figure that co
 	  that correspond to Fig \ref{fig:map_of_absorption_and_profiles_for_three_different_E_dc_B=4}(e)}
 	  \label{fig:E_dc=7.8_B=4_different_mu}	  
 	\end{figure}
-	Notable in this figure and the next one, both of which corresponds to regime right around separatrix, that negative
-	absorption is preserved even as temperature rises essentially to room temperature $\mu = 1.16$. However, stability of
-	amplification of around separatix is questionable since corresponding classical pendulum is known to exhibit chaos in
-	this regime.
+	Notable in this figure and the next one, both of which corresponds to regime right around separatrix, that
+	negative absorption is preserved even as temperature rises essentially to room temperature $\mu = 1.16$. 
+	However, stability of amplification of around separatix is questionable since corresponding classical 
+	pendulum is known to exhibit chaos in this regime.
 	\begin{figure}[H]
 	  \centering
 	  \normalsize % use normal font size in the figure
@@ -741,10 +688,26 @@ else, we will some odd effects. You can see that on the very next figure that co
 	  \centering
 	  \normalsize % use normal font size in the figure 
 	  \includegraphics[scale=0.35]{plots/A_and_ASIN_of_omega_E_dc_is_9_point_5_vary_mu.pdf}
-	  \caption{This shows effect of raising temperature on absorption and ASIN as functions of $\omega$ for parameters 
-	  that correspond to Fig \ref{fig:map_of_absorption_and_profiles_for_three_different_E_dc_B=4}(d)}
+	  \caption{This shows effect of raising temperature on absorption and ASIN as functions of $\omega$ for
+      parameters that correspond to Fig \ref{fig:map_of_absorption_and_profiles_for_three_different_E_dc_B=4}(d)}
 	  \label{fig:E_dc=9.5_B=4_different_mu}	  
 	\end{figure}
+    Overview of effect of changing temperature on absorption can be glimpsed from the following set of maps
+	\begin{figure}[H]
+	  \centering
+	  \normalsize % use normal font size in the figure	  
+	  \includegraphics[scale=0.45]{plots/absorption_maps_B_is_4_vary_mu.pdf}
+	  \caption{Maps of absorption for $E_\omega=0.1$, $\alpha=0.9496$, $\tilde{B}=4$ and $\mu=[116, 32.16, 11.6, 1.16]$
+	  as a function of $\tilde{E}$ (on the x-axis) and $\omega$ (on the y-axis)}
+	  \label{fig:absorption}	  
+	\end{figure}    
+    
+    You can see here that as temperature raises ($\mu$ decreases) picture of absorption becomes greatly simplified and 
+    region of negative effective mass retreats farther to the right. Remember that dashed vertical line demarcates 
+    positive (on the left side) and negative (on the right) effective mass. Remarkably, some very weak negative absorption 
+    still remain even at $\mu=1.16$ and even even expands at $\tilde{\omega}=0.5$ as is also noted by figures 
+    \ref{fig:E_dc=6.5_B=4_different_mu} and \ref{fig:E_dc=7.0_B=4_different_mu}
+    
     One of the way that we can use to understand signal absorption and amplification in SL is to consider formation
     of bunches in $k$-space. In vacuum electronics this effect is known as bunching and can be studied in both, real and
     momentum spaces. In our case visualization of bunches in momentum space would require, hard to understand and
@@ -778,7 +741,6 @@ else, we will some odd effects. You can see that on the very next figure that co
 	  \includegraphics[scale=0.5]{plots/bunching_2_point_455_zoom.pdf}
 	  \caption{}	  
 	\end{figure}
-	\newpage
     A similar map can be plotted for a case of strong positive absorption.
 	\begin{figure}[H]
 	  \centering
@@ -805,10 +767,79 @@ else, we will some odd effects. You can see that on the very next figure that co
     separatix. Also, it is important to look at the case where spacial homogeneity is not assumed and verify that
     electron bunching in real space does not occur or if it does that it is does not destroy picture of small signal
     amplification presented in this paper. Strong signal amplification should also be considered as it should expose
-    nonlinearity of dispersion relation even more and is a very interesting topic to consider. On experimental front,
+    non-linearity of dispersion relation even more and is a very interesting topic to consider. On experimental front,
     verification of our findings would be most welcome.    
   	\bibliography{master}
    	\newpage
+    \section{CUDA and CPU code}
+    The above described numerical algorithm was implemented in C with 
+    OpenMP \footnote{http://en.wikipedia.org/wiki/OpenMP} and in 
+    C CUDA \footnote{http://en.wikipedia.org/wiki/CUDA} and run on NVidia consumer grade GPGPU GTX680. 
+    In this section we look at overall implementation of the code and compare two different approaches.
+    Both approaches utilize the same data-structures, but abundance of ALUs in GPU makes i/o to and from memory 
+    the main bottleneck, which in turn creates need for memory access optimizations that are not needed in 
+    straightforward CPU implementation. 
+    
+    In total 9 of two dimensional arrays are employed. They are $\mathbf{a}^{(0)}$, $\mathbf{a}^{(1)}_{even}$, 
+    $\mathbf{a}^{(2)}_{even}$, $\mathbf{b}^{(1)}_{even}$, $\mathbf{b}^{(2)}_{even}$, and odd counterparts that 
+    hold values of $a_{n,m}$ and $b_{n,m}$ on the staggered (odd) grid $\mathbf{a}^{(1)}_{odd}$, 
+    $\mathbf{a}^{(2)}_{odd}$, $\mathbf{b}^{(1)}_{odd}$, $\mathbf{b}^{(2)}_{odd}$. The reason for two arrays for 
+    both $a_{n,m}$ and $b_{n,m}$ on each grid is that at each given moment in time one serves as the one holding 
+    known values and another one serves as target were values at time $t+\Delta t$ are accumulated. All of the arrays 
+    are laid out as following
+    \begin{figure}[H]
+   	  \centering
+	  \normalsize % use normal font size in the figure
+	  \includegraphics[scale=1.2]{illustrations/array_layout.pdf}
+	  \label{fig:array_layout}
+	  \caption{}
+	\end{figure}
+	where elements in greyed out cells are always $0$, which allows us to avoid checking continuously if we are at the 
+	edge of computation domain. For the reasons that will become clear later we do not need similar buffer for $n=0$ elements, 
+	i.e. first row. Also shown a cross pattern indicating which elements are accessed to compute $a_{n,m}$ or $b_{n,m}$ at 
+	the next moment in time, which are $a^{(0)}_{n,m}$, $a_{n-1,m-1}$, $a_{n-1,m+1}$, $a_{n+1,m-1}$, $a_{n+1,m-1}$ and 
+	same elements in $\mathbf{b}$ array. And since our two dimensional array is actually a one dimensional one with rows 
+	top to bottom laying one after another, spacial locality of these elements seen in 2D view is broken in actual 1D layout.
+	To combat this problem we could use Z-indexing to bring these elements into a close proximity in 1D array. However that 
+	comes at the expense of making indexing within the array much more complicated and, as our experiments show, does not 
+	bring much of benefit as far as reducing computational time. In strait C implementation, to compute next values 
+	of $a$ and $b$ we have two loops 
+	\begin{alltt}
+    for( m = 1 .. M+1 ) \{
+        for( n = 0 .. N ) \{
+            a(next,n,m), b(next,n,m) = TIME_STEP( a(current), b(current) )
+        \}
+    \}
+	\end{alltt}
+	This operation is repeated for staggered grid. When using OpenMP outer loop is instructed to be executed in parallel, 
+	which is of course limited by the number of cores. And when using CUDA, inner loop becomes kernel, $M+1$ executions of 
+	which are partitioned among certain number of blocks and threads per block, which ratio is found experimentally to minimize 
+	execution time. For GPU/CUDA code to minimize impact of uncoalesced memory access, we partially unroll the inner loop 
+	and use local registers to store $a^{current}_{n+1,m\pm 1}$ and $b^{current}_{n+1,m\pm 1}$ to be reused as
+	$a^{current}_{n-1,m\pm 1}$ and $b^{current}_{n-1,m\pm 1}$ at $n+2$ step. This unrolling procedure can be extended 
+	improving performance until register memory overflows and performance drops. Note, that since each thread executes 
+	whole inner loop we, essentially, relying on instruction level parallelism to archive higher performance than if 
+	we used innermost part only of the above code as the kernel. Two loops described above and another one for the staggered grid
+	are wrapped into a larger loop that advances time from $0$ until some predefined $t_{max}+T$, where $T$ is period of external
+	a/c emf. Starting from $t_{max}$ to $t_{max}+T$, additionally, we have perform reduction of $a_{0,m}$, $a_{1,m}$ and $b_{1,m}$
+	and then averaging over period $T$ to compute averaged drift velocities along $x$ and $y$ axis, effective mass, absorption $A$,
+	$ASIN$ and norm of distribution function. The last one serves as an overall check of correctness of our calculations. In all
+	of the results presented norm of distribution function was never more than $0.01$ off from $1$, i.e. deviation from $1$ was 
+	always less than 1\% and often was much less. Following table shows computation time for a some specific parameter values,
+	averaged over $10$ runs for three different versions the program, CPU (one core), CPU+OpenMP (8 cores) and GPU (GTX680), 
+	where CPU used is "Intel Core i7-3770" running at 3.40GHz.
+	
+    \begin{center}
+    \begin{tabular}{| l | l | l |}
+    \hline
+    CPU i7 & CPU i7 + OpenMP & GPU \\ \hline
+    N/A & N/A & N/A \\ \hline
+    \end{tabular}
+    \end{center}
+    
+    Important for us here, not specific execution time, but relative one, which shows that GTX680 GPGPU is roughly equivalent 
+    to 70 cores of Intel i7 archiving performance of much more powerful system at the fraction of the cost.
+    \newpage        
     \section{Additional figures}
 	\begin{figure}[H]
 	  \centering
