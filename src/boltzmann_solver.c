@@ -52,7 +52,9 @@ int host_M = 3069;
 
 // array sizes will be derived from host_M variable; following variables holds
 // various sizes related to be allocated arrays
-int MSIZE, host_TMSIZE, SIZE_2D;
+int MSIZE, MP1, host_TMSIZE, SIZE_2D;
+
+int NSIZE;
 
 // time step
 // change it here if you experience numerical instability
@@ -81,7 +83,7 @@ int main(int argc, char **argv) {
   } else {
     t_max = t_start + T;
   }
-  if( quiet == 0 ) { printf("# t_max = %0.20f\n", t_max); }
+  if( quiet == 0 ) { printf("# t_max = %0.20f kernel=%d\n", t_max, BLTZM_KERNEL); }
 
   // we will allocate enough memory to accommodate range
   // from -PhiY_max_range to PhiY_max_range, but will use only
@@ -94,9 +96,12 @@ int main(int argc, char **argv) {
   //host_dPhi = PhiY_max_range/host_M;
   host_dPhi = (PhiYmax-PhiYmin)/host_M;
 
-  const int NSIZE = host_N+1;
+  NSIZE = host_N+1;
   //MSIZE = 2*host_M+3;
   MSIZE = host_M+3;
+
+  MP1 = host_M+1; // 
+
   SIZE_2D = NSIZE*MSIZE;
   const int SIZE_2Df = SIZE_2D*sizeof(ffloat);
 
@@ -188,7 +193,12 @@ int main(int argc, char **argv) {
 
   for(;;) {
     //read_from
+    int ccc = 0;
     for( t = t0; t < t_max; t += host_dt ) {
+      /// XXX
+      //ccc++;
+      //if( ccc == 51 ) { break; }
+
       t_hs = t + host_dt/2;
       cos_omega_t = cos(host_omega*t);
       cos_omega_t_plus_dt = cos(host_omega*(t+host_dt));
@@ -203,6 +213,21 @@ int main(int argc, char **argv) {
       step_on_half_grid(blocks, a0, a[current], b[current], a[next], b[next], a[current_hs],
                         b[current_hs], a[next_hs], b[next_hs], t, t_hs,
                         cos_omega_t, cos_omega_t_plus_dt);
+
+      /*
+      if( t >= 0 ) { 
+	HANDLE_ERROR(cudaMemcpy(host_a, a[current], SIZE_2Df, cudaMemcpyDeviceToHost));
+	HANDLE_ERROR(cudaMemcpy(host_b, b[current], SIZE_2Df, cudaMemcpyDeviceToHost));
+          sprintf(file_name_buf, "strobe.data");
+          FILE *frame_file_stream = fopen(file_name_buf, "w");
+          setvbuf(frame_file_stream, buf, _IOFBF, sizeof(buf));
+          printf("\nWriting strobe %s\n", file_name_buf);
+          print_2d_strobe(frame_file_stream, MSIZE, host_a0, host_a, host_b, host_alpha, t);
+          fclose(frame_file_stream);
+          frame_time = 0;
+
+	break; } /// XXX REMOVE ME
+      */
 
       if( host_E_omega > 0 && display == 77 && frame_time >= 0.01) {
         // we need to perform averaging of v_dr, m_x and A
@@ -230,10 +255,10 @@ int main(int argc, char **argv) {
       //  printf("t=%0.12f %0.12f %0.12f\n", t, , T);
       //}
 
-      if( display == 9 && t >= t_start ) {
+      if( display == 9 && t >= t_start ) { // XXX PUT ME BACK
         ffloat tT = t/T;
         ffloat tT_reminder = tT-((int)tT);
-        if( tT_reminder < last_tT_reminder ) {
+        if( tT_reminder < last_tT_reminder ) { 
           HANDLE_ERROR(cudaMemcpy(host_a, a[current], SIZE_2Df, cudaMemcpyDeviceToHost));
           HANDLE_ERROR(cudaMemcpy(host_b, b[current], SIZE_2Df, cudaMemcpyDeviceToHost));
           sprintf(file_name_buf, "strobe%08d.data", frame_number++);
@@ -243,7 +268,7 @@ int main(int argc, char **argv) {
           print_2d_strobe(frame_file_stream, MSIZE, host_a0, host_a, host_b, host_alpha, t);
           fclose(frame_file_stream);
           frame_time = 0;
-        }
+	}
         last_tT_reminder = tT_reminder;
       }
 

@@ -154,13 +154,20 @@ cn.lf.cuda.o: src/cn.lf.cuda.cu src/fourier.cuda.h src/constants.h
 bin/cn.lf.cuda: cn.lf.cuda.o
 	$(GCC) $(CCFLAGS) -o $@ $+ $(LDFLAGS) $(EXTRA_LDFLAGS) && rm -f cn.lf.cuda.o
 
-
 src/boltzmann_gpu.o: src/boltzmann_gpu.cu src/boltzmann_gpu.h
-	@echo "\nBuilding $@" && \
-	$(NVCC) $(NVCCFLAGS) $(EXTRA_NVCCFLAGS) -I$(CUDA_INC_PATH) $(GENCODE_FLAGS) -DT_EXT=$(T) -o $@ -c src/boltzmann_gpu.cu
+	echo "\nBuilding $@ with kernel=$(BLTZM_KERNEL)" && \
+	$(NVCC) $(NVCCFLAGS) $(EXTRA_NVCCFLAGS) -I$(CUDA_INC_PATH) $(GENCODE_FLAGS) -DT_EXT=$(T) -o $@ -c src/boltzmann_gpu.cu -DBLTZM_KERNEL=$(BLTZM_KERNEL)
 
 bin/boltzmann_solver: src/boltzmann_gpu.o src/boltzmann_cli.c src/boltzmann_cli.h src/boltzmann.h src/boltzmann_solver.c src/boltzmann_solver.h
-	$(GCC) $(CCFLAGS) -std=gnu99 -o $@ $+ $(LDFLAGS) $(EXTRA_LDFLAGS) -I$(CUDA_INC_PATH) && rm -f src/boltzmann_gpu.o    
+	$(GCC) $(CCFLAGS) -std=gnu99 -o $@ $+ $(LDFLAGS) $(EXTRA_LDFLAGS) -I$(CUDA_INC_PATH) -DBLTZM_KERNEL=$(BLTZM_KERNEL) && rm -f src/boltzmann_gpu.o    
+
+
+src/boltzmann_gpu_column_major.o: src/boltzmann_gpu_column_major.cu src/boltzmann_gpu.h
+	@echo "\nBuilding $@" && \
+	$(NVCC) $(NVCCFLAGS) $(EXTRA_NVCCFLAGS) -I$(CUDA_INC_PATH) $(GENCODE_FLAGS) -DT_EXT=$(T) -o $@ -c src/boltzmann_gpu_column_major.cu
+
+bin/boltzmann_solver_cm: src/boltzmann_gpu_column_major.o src/boltzmann_cli.c src/boltzmann_cli.h src/boltzmann.h src/boltzmann_solver_column_major.c src/boltzmann_solver.h
+	$(GCC) $(CCFLAGS) -std=gnu99 -o $@ $+ $(LDFLAGS) $(EXTRA_LDFLAGS) -I$(CUDA_INC_PATH) && rm -f src/boltzmann_gpu_column_major.o    
 
 clean:
 	rm -f bin/boltzmann_solver bin/fourier.cuda bin/fourier.float ignatov_cuda.o; find . -type f -name '*~' -exec rm -f {} \;
