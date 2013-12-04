@@ -52,7 +52,7 @@ int host_M = 3069;
 
 // array sizes will be derived from host_M variable; following variables holds
 // various sizes related to be allocated arrays
-int MSIZE, MP1, host_TMSIZE, SIZE_2D;
+int MSIZE, PADDED_MSIZE, MP1, host_TMSIZE, SIZE_2D;
 
 int NSIZE;
 
@@ -65,7 +65,7 @@ ffloat host_dt =   0.001; //0.0001;
 ffloat host_bdt, host_nu_tilde, host_nu2, host_nu;
 
 // macro used to access our primary data array
-#define nm(pointer, n, m) (*((pointer)+(n)*MSIZE+(m)))
+#define nm(pointer, n, m) (*((pointer)+(n)*PADDED_MSIZE+(m)))
 
 // takes position one the grid along \phi_y axis and converts into \phi_y value
 //#define phi_y(m) (host_dPhi*((m)-host_M-1))
@@ -99,10 +99,12 @@ int main(int argc, char **argv) {
   NSIZE = host_N+1;
   //MSIZE = 2*host_M+3;
   MSIZE = host_M+3;
+  PADDED_MSIZE = (MSIZE*sizeof(ffloat))%128==0?MSIZE:((((MSIZE*sizeof(ffloat))/128)*128+128)/sizeof(ffloat));
+  printf("PADDED MEMORY FROM %d ELEMENTS PER ROW TO %d\n", MSIZE, (int)PADDED_MSIZE);
 
   MP1 = host_M+1; // 
 
-  SIZE_2D = NSIZE*MSIZE;
+  SIZE_2D = NSIZE*PADDED_MSIZE;
   const int SIZE_2Df = SIZE_2D*sizeof(ffloat);
 
   host_TMSIZE=host_M+1;

@@ -10,6 +10,22 @@
 
 #define PPP 64
 
+/**
+   --------------------------------------------------------------------------------
+   Kernel#  | Description
+   --------------------------------------------------------------------------------
+   1        | One thread per point. Not using shared memory.
+   2        | One thread per point using shared memory.
+   310      | One thread per m-number. Not unrolled.
+   311      | One thread per m-number. Not unrolled. Removed divergent flows by taking 
+            | calculations at n=0 and n=1 out of the loops.
+   321      | One thread per m-number. Unrolled twice. Divergent flows removed.
+   341      | One thread per m-number. Unrolled four times. Divergent flows removed.
+   342      | One thread per m-number. Unrolled four times. Divergent flows removed. Elements partially reused.
+   4        | One thread per m-number. Loops are staggered and elemenets reused. Not unrolled.
+   --------------------------------------------------------------------------------
+**/
+
 extern "C"
 void HandleError(cudaError_t err, const char *file, int line) {
   if (err != cudaSuccess) {
@@ -25,12 +41,12 @@ extern ffloat host_E_dc, host_E_omega, host_omega, host_mu, host_alpha,
   PhiYmin, PhiYmax, host_B, t_start, host_dPhi, host_dt,
   host_bdt, host_nu_tilde, host_nu2, host_nu;
 
-extern int host_M, host_N, MSIZE, MP1, NSIZE, host_TMSIZE;
+extern int host_M, host_N, MSIZE, MP1, NSIZE, host_TMSIZE, PADDED_MSIZE;
 
 __constant__ ffloat E_dc, E_omega, omega, B, dt, dPhi, nu, nu2, nu_tilde, bdt, mu, alpha, dev_PhiYmin;
-__constant__ int M, N, dev_MSIZE, TMSIZE, dev_NSIZE;
+__constant__ int M, N, dev_MSIZE, DPADDED_MSIZE, TMSIZE, dev_NSIZE;
 
-#define dnm(pointer, n, m) (*((pointer)+(n)*dev_MSIZE+(m)))
+#define dnm(pointer, n, m) (*((pointer)+(n)*DPADDED_MSIZE+(m)))
 //#define dev_phi_y(m) (dPhi*((m)-M-1))
 #define dev_phi_y(m) (dev_PhiYmin+dPhi*((m)-1))
 
@@ -53,6 +69,8 @@ void load_data(void) {
   HANDLE_ERROR(cudaMemcpyToSymbol(dev_MSIZE,   &MSIZE,         sizeof(int)));
   HANDLE_ERROR(cudaMemcpyToSymbol(dev_NSIZE,   &NSIZE,         sizeof(int)));
   HANDLE_ERROR(cudaMemcpyToSymbol(TMSIZE,      &host_TMSIZE,   sizeof(int)));
+  HANDLE_ERROR(cudaMemcpyToSymbol(DPADDED_MSIZE, &PADDED_MSIZE,   sizeof(int)));
+
   HANDLE_ERROR(cudaMemcpyToSymbol(bdt,         &host_bdt,      sizeof(ffloat)));
   HANDLE_ERROR(cudaMemcpyToSymbol(nu_tilde,    &host_nu_tilde, sizeof(ffloat)));
   HANDLE_ERROR(cudaMemcpyToSymbol(nu2,         &host_nu2,      sizeof(ffloat)));
@@ -63,238 +81,14 @@ void load_data(void) {
   dimGrid.y = (MP1+BLOCK_SIZE)/BLOCK_SIZE;
 } // end of load_data()
 
-__global__ void _step_on_grid_nr(ffloat *a0, ffloat *a_current,    ffloat *b_current,
-                                 ffloat *a_next,       ffloat *b_next,
-                                 ffloat *a_current_hs, ffloat *b_current_hs,
-                                 ffloat t, ffloat t_hs,
-                                 ffloat cos_omega_t,   ffloat cos_omega_t_plus_dt)
-{
-  const int m = threadIdx.x+blockDim.x*blockIdx.x;
-  if( m==0 || m > TMSIZE ) { return; }
-
-  // step from (t,t+1/2) to (t+1)
-  ffloat mu_t_part = (E_dc + E_omega*cos_omega_t+B*dev_phi_y(m))*dt/2;
-  ffloat mu_t_plus_1_part = (E_dc + E_omega*cos_omega_t_plus_dt+B*dev_phi_y(m))*dt/2;
-
-  for( int n = 0; n < N; n++ ) {
-    ffloat mu_t = n*mu_t_part;
-    ffloat mu_t_plus_1 = n*mu_t_plus_1_part;
-    ffloat g = dnm(a_current,n,m)-dnm(b_current,n,m)*mu_t +
-      bdt*( dnm(b_current_hs,n+1,m+1) - dnm(b_current_hs,n+1,m-1) - (n < 2 ? 0 : (dnm(b_current_hs,n-1,m+1) - dnm(b_current_hs,n-1,m-1))) );
-    ffloat h = dnm(b_current,n,m)+dnm(a_current,n,m)*mu_t +
-      bdt*( (n==1?2:1)*(n==0?0:(dnm(a_current_hs,n-1,m+1)-dnm(a_current_hs,n-1,m-1))) - dnm(a_current_hs,n+1,m+1) + dnm(a_current_hs,n+1,m-1) );
-
-    ffloat xi = 1 + mu_t_plus_1*mu_t_plus_1;
-    dnm(a_next,n,m) = (g - h*mu_t_plus_1)/xi;
-    if( n > 0 ) {
-      dnm(b_next,n,m) = (g*mu_t_plus_1 + h)/xi;
-    }
-  }
-} // end of _step_on_grid_nr(...)
-
-__global__ void _step_on_half_grid_nr(ffloat *a0, ffloat *a_current,    ffloat *b_current,
-                                      ffloat *a_next,       ffloat *b_next,
-                                      ffloat *a_current_hs, ffloat *b_current_hs,
-                                      ffloat *a_next_hs,    ffloat *b_next_hs,
-                                      ffloat t, ffloat t_hs,
-                                      ffloat cos_omega_t, ffloat cos_omega_t_plus_dt)
-{
-  const int m = threadIdx.x+blockDim.x*blockIdx.x;
-  if( m==0 || m > TMSIZE ) { return; }
-
-  // step from (t+1/2,t+1) to (t+3/2)
-  ffloat mu_t_part = (E_dc + E_omega*cos_omega_t+B*dev_phi_y(m))*dt/2;
-  ffloat mu_t_plus_1_part = (E_dc + E_omega*cos_omega_t_plus_dt+B*dev_phi_y(m))*dt/2;
-  for( int n = 0; n < N; n++ ) {
-    ffloat mu_t = n*mu_t_part;
-    ffloat mu_t_plus_1 = n*mu_t_plus_1_part;
-    ffloat g = dnm(a_current_hs,n,m)-dnm(b_current_hs,n,m)*mu_t +
-      bdt*( dnm(b_next,n+1,m+1) - dnm(b_next,n+1,m-1) - (n < 2 ? 0 : (dnm(b_next,n-1,m+1) - dnm(b_next,n-1,m-1))) );
-    ffloat h = dnm(b_current_hs,n,m)+dnm(a_current_hs,n,m)*mu_t +
-      bdt*( (n==1?2:1)*(n==0?0:(dnm(a_next,n-1,m+1)-dnm(a_next,n-1,m-1))) - dnm(a_next,n+1,m+1) + dnm(a_next,n+1,m-1) );
-    ffloat xi = 1 + mu_t_plus_1*mu_t_plus_1;
-    dnm(a_next_hs,n,m) = (g - h*mu_t_plus_1)/xi;
-    if( n > 0 ) {
-      dnm(b_next_hs,n,m) = (g*mu_t_plus_1 + h)/xi;
-    }
-  }
-} // end of _step_on_half_grid_nr(...)
-
-__global__ void _step_on_grid_k4(ffloat *a0, ffloat *a_current,    ffloat *b_current,
-                              ffloat *a_next,       ffloat *b_next,
-                              ffloat *a_current_hs, ffloat *b_current_hs,
-                              ffloat t, ffloat t_hs,
-                              ffloat cos_omega_t, ffloat cos_omega_t_plus_dt)
-{
-  __shared__ ffloat a_c_forward[TH_PER_BLOCK];
-  __shared__ ffloat b_c_forward[TH_PER_BLOCK];
-
-  const int m = threadIdx.x+blockDim.x*blockIdx.x;
-  if( m==0 || m > TMSIZE ) { return; }
-
-  // step from (t,t+1/2) to (t+1)
-  ffloat mu_t_part = (E_dc + E_omega*cos_omega_t+B*dev_phi_y(m))*dt/2;
-  ffloat mu_t_plus_1_part = (E_dc + E_omega*cos_omega_t_plus_dt+B*dev_phi_y(m))*dt/2;
-  ffloat b_current_hs_n_minus_1_m_plus_1  = 0;
-  ffloat b_current_hs_n_minus_1_m_minus_1 = 0;
-  ffloat a_current_hs_n_minus_1_m_plus_1  = 0;
-  ffloat a_current_hs_n_minus_1_m_minus_1 = 0;
-  ffloat b_current_hs_n_plus_1_m_plus_1;
-  ffloat b_current_hs_n_plus_1_m_minus_1;
-  ffloat a_current_hs_n_plus_1_m_plus_1;
-  ffloat a_current_hs_n_plus_1_m_minus_1;
-
-  for( int n = 0; n < N; n += 2 ) {
-    ffloat a_center = dnm(a_current,n,m);
-    ffloat b_center = dnm(b_current,n,m);
-    ffloat mu_t = n*mu_t_part;
-    ffloat mu_t_plus_1 = n*mu_t_plus_1_part;
-
-    a_c_forward[threadIdx.x] = dnm(a_current,n+1,m);
-    b_c_forward[threadIdx.x] = dnm(b_current,n+1,m);
-    __syncthreads();
-
-    b_current_hs_n_plus_1_m_plus_1  = (threadIdx.x==TH_PER_BLOCK_MINUS_ONE)?dnm(b_current_hs,n+1,m+1):b_c_forward[threadIdx.x+1]; // dnm(b_current_hs,n+1,m+1);
-    b_current_hs_n_plus_1_m_minus_1 = (threadIdx.x==0)?dnm(b_current_hs,n+1,m-1):b_c_forward[threadIdx.x-1]; // dnm(b_current_hs,n+1,m-1);
-    a_current_hs_n_plus_1_m_plus_1  = (threadIdx.x==TH_PER_BLOCK_MINUS_ONE)?dnm(a_current_hs,n+1,m+1):a_c_forward[threadIdx.x+1]; // dnm(a_current_hs,n+1,m+1);
-    a_current_hs_n_plus_1_m_minus_1 = (threadIdx.x==0)?dnm(a_current_hs,n+1,m-1):a_c_forward[threadIdx.x-1]; // dnm(a_current_hs,n+1,m-1);
-    ffloat g = dt*dnm(a0,n,m)+a_center*nu_tilde-b_center*mu_t +
-      bdt*( b_current_hs_n_plus_1_m_plus_1 - b_current_hs_n_plus_1_m_minus_1 - b_current_hs_n_minus_1_m_plus_1 + b_current_hs_n_minus_1_m_minus_1 );
-    ffloat h = b_center*nu_tilde+a_center*mu_t +
-      bdt*( a_current_hs_n_minus_1_m_plus_1 - a_current_hs_n_minus_1_m_minus_1 - a_current_hs_n_plus_1_m_plus_1 + a_current_hs_n_plus_1_m_minus_1 );
-
-    ffloat xi = nu2 + mu_t_plus_1*mu_t_plus_1;
-    dnm(a_next,n,m) = (g*nu - h*mu_t_plus_1)/xi;
-    if( n > 0 ) {
-       dnm(b_next,n,m) = (g*mu_t_plus_1 + h*nu)/xi;
-    }
-    b_current_hs_n_minus_1_m_plus_1  = b_current_hs_n_plus_1_m_plus_1;
-    b_current_hs_n_minus_1_m_minus_1 = b_current_hs_n_plus_1_m_minus_1;
-    a_current_hs_n_minus_1_m_plus_1  = a_current_hs_n_plus_1_m_plus_1;
-    a_current_hs_n_minus_1_m_minus_1 = a_current_hs_n_plus_1_m_minus_1;
-  }
-
-  b_current_hs_n_minus_1_m_plus_1  = 0;
-  b_current_hs_n_minus_1_m_minus_1 = 0;
-  a_current_hs_n_minus_1_m_plus_1  = 2*dnm(a_current_hs,0,m+1);
-  a_current_hs_n_minus_1_m_minus_1 = 2*dnm(a_current_hs,0,m-1);
-  for( int n = 1; n < N; n += 2 ) {
-    ffloat a_center = dnm(a_current,n,m);
-    ffloat b_center = dnm(b_current,n,m);
-    ffloat mu_t = n*mu_t_part;
-    ffloat mu_t_plus_1 = n*mu_t_plus_1_part;
-
-    a_c_forward[threadIdx.x] = dnm(a_current_hs,n+1,m);
-    b_c_forward[threadIdx.x] = dnm(b_current_hs,n+1,m);
-    __syncthreads();
-
-    b_current_hs_n_plus_1_m_plus_1  = (threadIdx.x==TH_PER_BLOCK_MINUS_ONE)?dnm(b_current_hs,n+1,m+1):b_c_forward[threadIdx.x+1]; // dnm(b_current_hs,n+1,m+1);
-    b_current_hs_n_plus_1_m_minus_1 = (threadIdx.x==0)?dnm(b_current_hs,n+1,m-1):b_c_forward[threadIdx.x-1]; // dnm(b_current_hs,n+1,m-1);
-    a_current_hs_n_plus_1_m_plus_1  = (threadIdx.x==TH_PER_BLOCK_MINUS_ONE)?dnm(a_current_hs,n+1,m+1):a_c_forward[threadIdx.x+1]; // dnm(a_current_hs,n+1,m+1);
-    a_current_hs_n_plus_1_m_minus_1 = (threadIdx.x==0)?dnm(a_current_hs,n+1,m-1):a_c_forward[threadIdx.x-1]; // dnm(a_current_hs,n+1,m-1);
-    ffloat g = dt*dnm(a0,n,m)+a_center*nu_tilde-b_center*mu_t +
-      bdt*( b_current_hs_n_plus_1_m_plus_1 - b_current_hs_n_plus_1_m_minus_1 - b_current_hs_n_minus_1_m_plus_1 + b_current_hs_n_minus_1_m_minus_1);
-    ffloat h = b_center*nu_tilde+a_center*mu_t +
-      bdt*( a_current_hs_n_minus_1_m_plus_1 - a_current_hs_n_minus_1_m_minus_1 - a_current_hs_n_plus_1_m_plus_1 + a_current_hs_n_plus_1_m_minus_1 );
-
-    ffloat xi = nu2 + mu_t_plus_1*mu_t_plus_1;
-    dnm(a_next,n,m) = (g*nu - h*mu_t_plus_1)/xi;
-    dnm(b_next,n,m) = (g*mu_t_plus_1 + h*nu)/xi;
-    b_current_hs_n_minus_1_m_plus_1  = b_current_hs_n_plus_1_m_plus_1;
-    b_current_hs_n_minus_1_m_minus_1 = b_current_hs_n_plus_1_m_minus_1;
-    a_current_hs_n_minus_1_m_plus_1  = a_current_hs_n_plus_1_m_plus_1;
-    a_current_hs_n_minus_1_m_minus_1 = a_current_hs_n_plus_1_m_minus_1;
-  }
-} // end of _step_on_grid(...)
-
-__global__ void _step_on_half_grid_k4(ffloat *a0, ffloat *a_current,    ffloat *b_current,
-                                  ffloat *a_next,       ffloat *b_next,
-                                  ffloat *a_current_hs, ffloat *b_current_hs,
-                                  ffloat *a_next_hs,    ffloat *b_next_hs,
-                                  ffloat t, ffloat t_hs,
-                                  ffloat cos_omega_t, ffloat cos_omega_t_plus_dt)
-{
-  __shared__ ffloat a_c_forward[TH_PER_BLOCK];
-  __shared__ ffloat b_c_forward[TH_PER_BLOCK];
-
-  const int m = threadIdx.x+blockDim.x*blockIdx.x;
-  if( m==0 || m > TMSIZE ) { return; }
-
-  // step from (t+1/2,t+1) to (t+3/2)
-  ffloat mu_t_part = (E_dc + E_omega*cos_omega_t+B*dev_phi_y(m))*dt/2;
-  ffloat mu_t_plus_1_part = (E_dc + E_omega*cos_omega_t_plus_dt+B*dev_phi_y(m))*dt/2;
-  ffloat b_next_n_minus_1_m_plus_1  = 0;
-  ffloat b_next_n_minus_1_m_minus_1 = 0;
-  ffloat a_next_n_minus_1_m_plus_1  = 0;
-  ffloat a_next_n_minus_1_m_minus_1 = 0;
-  ffloat b_next_n_plus_1_m_plus_1;
-  ffloat b_next_n_plus_1_m_minus_1;
-  ffloat a_next_n_plus_1_m_plus_1;
-  ffloat a_next_n_plus_1_m_minus_1;
-
-  for( int n = 0; n < N; n += 2 ) {
-    ffloat mu_t = n*mu_t_part;
-    ffloat mu_t_plus_1 = n*mu_t_plus_1_part;
-    ffloat a_center = dnm(a_current_hs,n,m);
-    ffloat b_center = dnm(b_current_hs,n,m);
-
-    a_c_forward[threadIdx.x] = dnm(a_next,n+1,m);
-    b_c_forward[threadIdx.x] = dnm(b_next,n+1,m);
-    __syncthreads();
-
-    b_next_n_plus_1_m_plus_1  = (threadIdx.x==TH_PER_BLOCK_MINUS_ONE)?dnm(b_next,n+1,m+1):b_c_forward[threadIdx.x+1]; // dnm(b_next,n+1,m+1);
-    b_next_n_plus_1_m_minus_1 = (threadIdx.x==0)?dnm(b_next,n+1,m-1):b_c_forward[threadIdx.x-1]; // dnm(b_next,n+1,m-1);
-    a_next_n_plus_1_m_plus_1  = (threadIdx.x==TH_PER_BLOCK_MINUS_ONE)?dnm(a_next,n+1,m+1):a_c_forward[threadIdx.x+1]; // dnm(a_next,n+1,m+1);
-    a_next_n_plus_1_m_minus_1 = (threadIdx.x==0)?dnm(a_next,n+1,m-1):a_c_forward[threadIdx.x-1]; // dnm(a_next,n+1,m-1);
-    ffloat g = dt*dnm(a0,n,m)+a_center*nu_tilde-b_center*mu_t +
-      bdt*( b_next_n_plus_1_m_plus_1 - b_next_n_plus_1_m_minus_1 - b_next_n_minus_1_m_plus_1 + b_next_n_minus_1_m_minus_1 );
-    ffloat h = b_center*nu_tilde+a_center*mu_t +
-      bdt*( a_next_n_minus_1_m_plus_1-a_next_n_minus_1_m_minus_1 - a_next_n_plus_1_m_plus_1 + a_next_n_plus_1_m_minus_1 );
-    ffloat xi = nu2 + mu_t_plus_1*mu_t_plus_1;
-    dnm(a_next_hs,n,m) = (g*nu - h*mu_t_plus_1)/xi;
-    if( n > 0 ) {
-      dnm(b_next_hs,n,m) = (g*mu_t_plus_1 + h*nu)/xi;
-    }
-    b_next_n_minus_1_m_plus_1  = b_next_n_plus_1_m_plus_1;
-    b_next_n_minus_1_m_minus_1 = b_next_n_plus_1_m_minus_1;
-    a_next_n_minus_1_m_plus_1  = a_next_n_plus_1_m_plus_1;
-    a_next_n_minus_1_m_minus_1 = a_next_n_plus_1_m_minus_1;
-  }
-
-  b_next_n_minus_1_m_plus_1  = 0;
-  b_next_n_minus_1_m_minus_1 = 0;
-  a_next_n_minus_1_m_plus_1  = 2*dnm(a_next,0,m+1);
-  a_next_n_minus_1_m_minus_1 = 2*dnm(a_next,0,m-1);
-  for( int n = 1; n < N; n += 2 ) {
-    ffloat mu_t = n*mu_t_part;
-    ffloat mu_t_plus_1 = n*mu_t_plus_1_part;
-    ffloat a_center = dnm(a_current_hs,n,m);
-    ffloat b_center = dnm(b_current_hs,n,m);
-
-    b_next_n_plus_1_m_plus_1  = (threadIdx.x==TH_PER_BLOCK_MINUS_ONE)?dnm(b_next,n+1,m+1):b_c_forward[threadIdx.x+1]; // dnm(b_next,n+1,m+1);
-    b_next_n_plus_1_m_minus_1 = (threadIdx.x==0)?dnm(b_next,n+1,m-1):b_c_forward[threadIdx.x-1]; // dnm(b_next,n+1,m-1);
-    a_next_n_plus_1_m_plus_1  = (threadIdx.x==TH_PER_BLOCK_MINUS_ONE)?dnm(a_next,n+1,m+1):a_c_forward[threadIdx.x+1]; // dnm(a_next,n+1,m+1);
-    a_next_n_plus_1_m_minus_1 = (threadIdx.x==0)?dnm(a_next,n+1,m-1):a_c_forward[threadIdx.x-1]; // dnm(a_next,n+1,m-1);
-
-    ffloat g = dt*dnm(a0,n,m)+a_center*nu_tilde-b_center*mu_t +
-      bdt*( b_next_n_plus_1_m_plus_1 - b_next_n_plus_1_m_minus_1 - b_next_n_minus_1_m_plus_1 + b_next_n_minus_1_m_minus_1 );
-    ffloat h = b_center*nu_tilde+a_center*mu_t +
-      bdt*( a_next_n_minus_1_m_plus_1-a_next_n_minus_1_m_minus_1 - a_next_n_plus_1_m_plus_1 + a_next_n_plus_1_m_minus_1 );
-    ffloat xi = nu2 + mu_t_plus_1*mu_t_plus_1;
-    dnm(a_next_hs,n,m) = (g*nu - h*mu_t_plus_1)/xi;
-    dnm(b_next_hs,n,m) = (g*mu_t_plus_1 + h*nu)/xi;
-    b_next_n_minus_1_m_plus_1  = b_next_n_plus_1_m_plus_1;
-    b_next_n_minus_1_m_minus_1 = b_next_n_plus_1_m_minus_1;
-    a_next_n_minus_1_m_plus_1  = a_next_n_plus_1_m_plus_1;
-    a_next_n_minus_1_m_minus_1 = a_next_n_plus_1_m_minus_1;
-  }
-} // end of _step_on_half_grid(...)
-
-__global__ void _step_on_grid_k3(ffloat *a0, ffloat *a_current,    ffloat *b_current,
-                              ffloat *a_next,       ffloat *b_next,
-                              ffloat *a_current_hs, ffloat *b_current_hs,
-                              ffloat t, ffloat t_hs,
-                              ffloat cos_omega_t, ffloat cos_omega_t_plus_dt)
+/** BEGINING OF K4 **/ // KNOWN GOLDEN CODE
+/* One thread per m-number. Reusing elements cached in registers. Not using shared memory. */
+__global__ void _step_on_grid_k4(ffloat *a0,           
+				 ffloat *a_current,    ffloat *b_current,
+				 ffloat *a_next,       ffloat *b_next,
+				 ffloat *a_current_hs, ffloat *b_current_hs,
+				 ffloat t,             ffloat t_hs,
+				 ffloat cos_omega_t,   ffloat cos_omega_t_plus_dt)
 {
   const int m = threadIdx.x+blockDim.x*blockIdx.x;
   if( m==0 || m > TMSIZE ) { return; }
@@ -319,10 +113,14 @@ __global__ void _step_on_grid_k3(ffloat *a0, ffloat *a_current,    ffloat *b_cur
     b_current_hs_n_plus_1_m_minus_1 = dnm(b_current_hs,n+1,m-1);
     a_current_hs_n_plus_1_m_plus_1  = dnm(a_current_hs,n+1,m+1);
     a_current_hs_n_plus_1_m_minus_1 = dnm(a_current_hs,n+1,m-1);
+
     ffloat g = dt*dnm(a0,n,m)+a_center*nu_tilde-b_center*mu_t +
-      bdt*( b_current_hs_n_plus_1_m_plus_1 - b_current_hs_n_plus_1_m_minus_1 - b_current_hs_n_minus_1_m_plus_1 + b_current_hs_n_minus_1_m_minus_1 );
+      bdt*( b_current_hs_n_plus_1_m_plus_1 - b_current_hs_n_plus_1_m_minus_1 - 
+	    b_current_hs_n_minus_1_m_plus_1 + b_current_hs_n_minus_1_m_minus_1 );
+
     ffloat h = b_center*nu_tilde+a_center*mu_t +
-      bdt*( a_current_hs_n_minus_1_m_plus_1 - a_current_hs_n_minus_1_m_minus_1 - a_current_hs_n_plus_1_m_plus_1 + a_current_hs_n_plus_1_m_minus_1 );
+      bdt*( a_current_hs_n_minus_1_m_plus_1 - a_current_hs_n_minus_1_m_minus_1 - 
+	    a_current_hs_n_plus_1_m_plus_1 + a_current_hs_n_plus_1_m_minus_1 );
 
     ffloat xi = nu2 + mu_t_plus_1*mu_t_plus_1;
     dnm(a_next,n,m) = (g*nu - h*mu_t_plus_1)/xi;
@@ -347,10 +145,14 @@ __global__ void _step_on_grid_k3(ffloat *a0, ffloat *a_current,    ffloat *b_cur
     b_current_hs_n_plus_1_m_minus_1 = dnm(b_current_hs,n+1,m-1);
     a_current_hs_n_plus_1_m_plus_1  = dnm(a_current_hs,n+1,m+1);
     a_current_hs_n_plus_1_m_minus_1 = dnm(a_current_hs,n+1,m-1);
+
     ffloat g = dt*dnm(a0,n,m)+a_center*nu_tilde-b_center*mu_t +
-      bdt*( b_current_hs_n_plus_1_m_plus_1 - b_current_hs_n_plus_1_m_minus_1 - b_current_hs_n_minus_1_m_plus_1 + b_current_hs_n_minus_1_m_minus_1);
+      bdt*( b_current_hs_n_plus_1_m_plus_1 - b_current_hs_n_plus_1_m_minus_1 - 
+	    b_current_hs_n_minus_1_m_plus_1 + b_current_hs_n_minus_1_m_minus_1);
+
     ffloat h = b_center*nu_tilde+a_center*mu_t +
-      bdt*( a_current_hs_n_minus_1_m_plus_1 - a_current_hs_n_minus_1_m_minus_1 - a_current_hs_n_plus_1_m_plus_1 + a_current_hs_n_plus_1_m_minus_1 );
+      bdt*( a_current_hs_n_minus_1_m_plus_1 - a_current_hs_n_minus_1_m_minus_1 - 
+	    a_current_hs_n_plus_1_m_plus_1 + a_current_hs_n_plus_1_m_minus_1 );
 
     ffloat xi = nu2 + mu_t_plus_1*mu_t_plus_1;
     dnm(a_next,n,m) = (g*nu - h*mu_t_plus_1)/xi;
@@ -360,14 +162,15 @@ __global__ void _step_on_grid_k3(ffloat *a0, ffloat *a_current,    ffloat *b_cur
     a_current_hs_n_minus_1_m_plus_1  = a_current_hs_n_plus_1_m_plus_1;
     a_current_hs_n_minus_1_m_minus_1 = a_current_hs_n_plus_1_m_minus_1;
   }
-} // end of _step_on_grid(...)
+} // end of _step_on_grid_k4(...)
 
-__global__ void _step_on_half_grid_k3(ffloat *a0, ffloat *a_current,    ffloat *b_current,
-                                  ffloat *a_next,       ffloat *b_next,
-                                  ffloat *a_current_hs, ffloat *b_current_hs,
-                                  ffloat *a_next_hs,    ffloat *b_next_hs,
-                                  ffloat t, ffloat t_hs,
-                                  ffloat cos_omega_t, ffloat cos_omega_t_plus_dt)
+__global__ void _step_on_half_grid_k4(ffloat *a0, 
+				      ffloat *a_current,    ffloat *b_current,
+				      ffloat *a_next,       ffloat *b_next,
+				      ffloat *a_current_hs, ffloat *b_current_hs,
+				      ffloat *a_next_hs,    ffloat *b_next_hs,
+				      ffloat t,             ffloat t_hs,
+				      ffloat cos_omega_t,   ffloat cos_omega_t_plus_dt)
 {
   const int m = threadIdx.x+blockDim.x*blockIdx.x;
   if( m==0 || m > TMSIZE ) { return; }
@@ -393,10 +196,15 @@ __global__ void _step_on_half_grid_k3(ffloat *a0, ffloat *a_current,    ffloat *
     b_next_n_plus_1_m_minus_1 = dnm(b_next,n+1,m-1);
     a_next_n_plus_1_m_plus_1  = dnm(a_next,n+1,m+1);
     a_next_n_plus_1_m_minus_1 = dnm(a_next,n+1,m-1);
+
     ffloat g = dt*dnm(a0,n,m)+a_center*nu_tilde-b_center*mu_t +
-      bdt*( b_next_n_plus_1_m_plus_1 - b_next_n_plus_1_m_minus_1 - b_next_n_minus_1_m_plus_1 + b_next_n_minus_1_m_minus_1 );
+      bdt*( b_next_n_plus_1_m_plus_1 - b_next_n_plus_1_m_minus_1 - 
+	    b_next_n_minus_1_m_plus_1 + b_next_n_minus_1_m_minus_1 );
+
     ffloat h = b_center*nu_tilde+a_center*mu_t +
-      bdt*( a_next_n_minus_1_m_plus_1-a_next_n_minus_1_m_minus_1 - a_next_n_plus_1_m_plus_1 + a_next_n_plus_1_m_minus_1 );
+      bdt*( a_next_n_minus_1_m_plus_1-a_next_n_minus_1_m_minus_1 - 
+	    a_next_n_plus_1_m_plus_1 + a_next_n_plus_1_m_minus_1 );
+
     ffloat xi = nu2 + mu_t_plus_1*mu_t_plus_1;
     dnm(a_next_hs,n,m) = (g*nu - h*mu_t_plus_1)/xi;
     if( n > 0 ) {
@@ -421,10 +229,14 @@ __global__ void _step_on_half_grid_k3(ffloat *a0, ffloat *a_current,    ffloat *
     b_next_n_plus_1_m_minus_1 = dnm(b_next,n+1,m-1);
     a_next_n_plus_1_m_plus_1  = dnm(a_next,n+1,m+1);
     a_next_n_plus_1_m_minus_1 = dnm(a_next,n+1,m-1);
+
     ffloat g = dt*dnm(a0,n,m)+a_center*nu_tilde-b_center*mu_t +
-      bdt*( b_next_n_plus_1_m_plus_1 - b_next_n_plus_1_m_minus_1 - b_next_n_minus_1_m_plus_1 + b_next_n_minus_1_m_minus_1 );
+      bdt*( b_next_n_plus_1_m_plus_1 - b_next_n_plus_1_m_minus_1 - 
+	    b_next_n_minus_1_m_plus_1 + b_next_n_minus_1_m_minus_1 );
+
     ffloat h = b_center*nu_tilde+a_center*mu_t +
-      bdt*( a_next_n_minus_1_m_plus_1-a_next_n_minus_1_m_minus_1 - a_next_n_plus_1_m_plus_1 + a_next_n_plus_1_m_minus_1 );
+      bdt*( a_next_n_minus_1_m_plus_1-a_next_n_minus_1_m_minus_1 - 
+	    a_next_n_plus_1_m_plus_1 + a_next_n_plus_1_m_minus_1 );
     ffloat xi = nu2 + mu_t_plus_1*mu_t_plus_1;
     dnm(a_next_hs,n,m) = (g*nu - h*mu_t_plus_1)/xi;
     dnm(b_next_hs,n,m) = (g*mu_t_plus_1 + h*nu)/xi;
@@ -433,13 +245,17 @@ __global__ void _step_on_half_grid_k3(ffloat *a0, ffloat *a_current,    ffloat *
     a_next_n_minus_1_m_plus_1  = a_next_n_plus_1_m_plus_1;
     a_next_n_minus_1_m_minus_1 = a_next_n_plus_1_m_minus_1;
   }
-} // end of _step_on_half_grid(...)
+} // end of _step_on_half_grid_k4(...)
+/** END OF K4 **/ // KNOWN GOLDEN CODE
 
-__global__ void _step_on_grid_k6(ffloat *a0, ffloat *a_current,    ffloat *b_current,
-                              ffloat *a_next,       ffloat *b_next,
-                              ffloat *a_current_hs, ffloat *b_current_hs,
-                              ffloat t, ffloat t_hs,
-                              ffloat cos_omega_t, ffloat cos_omega_t_plus_dt)
+/** BEGINING OF K2 KERNELS **/
+/* One thread per point using shared memory. */
+__global__ void _step_on_grid_k2(ffloat *a0, 
+				 ffloat *a_current,    ffloat *b_current,
+				 ffloat *a_next,       ffloat *b_next,
+				 ffloat *a_current_hs, ffloat *b_current_hs,
+				 ffloat t,             ffloat t_hs,
+				 ffloat cos_omega_t,   ffloat cos_omega_t_plus_dt)
 {
   const int m = blockIdx.y * blockDim.y + threadIdx.y + 1;
   const int n = blockIdx.x * blockDim.x + threadIdx.x;
@@ -455,40 +271,33 @@ __global__ void _step_on_grid_k6(ffloat *a0, ffloat *a_current,    ffloat *b_cur
   ffloat mu_t_part = (E_dc + E_omega*cos_omega_t+B*dev_phi_y(m))*dt/2;
   ffloat mu_t_plus_1_part = (E_dc + E_omega*cos_omega_t_plus_dt+B*dev_phi_y(m))*dt/2;
 
-  //for( int n = 0; n < N; n++ ) {
-    ffloat mu_t = n*mu_t_part;
-    ffloat mu_t_plus_1 = n*mu_t_plus_1_part;
+  ffloat mu_t = n*mu_t_part;
+  ffloat mu_t_plus_1 = n*mu_t_plus_1_part;
+  
+  ffloat g = dt*dnm(a0,n,m)+dnm(a_current,n,m)*nu_tilde-dnm(b_current,n,m)*mu_t +
+    bdt*( ((threadIdx.x<BLOCK_SIZE_M1 && threadIdx.y<BLOCK_SIZE_M1)?b_c[BLOCK_SIZE*(threadIdx.x+1)+threadIdx.y+1]:dnm(b_current_hs,n+1,m+1))- 
+	  ((threadIdx.x<BLOCK_SIZE_M1 && threadIdx.y!=0)?b_c[BLOCK_SIZE*(threadIdx.x+1)+threadIdx.y-1]:dnm(b_current_hs,n+1,m-1)) - 
+	  (n < 2 ? 0 : (
+			((threadIdx.x!=0 && threadIdx.y!=BLOCK_SIZE_M1)?b_c[BLOCK_SIZE*(threadIdx.x-1)+threadIdx.y+1]:dnm(b_current_hs,n-1,m+1)) - 
+			((threadIdx.x!=0 && threadIdx.y!=0)?b_c[BLOCK_SIZE*(threadIdx.x-1)+threadIdx.y-1]:dnm(b_current_hs,n-1,m-1))
+			)) );
 
-    //ffloat g = dt*dnm(a0,n,m)+dnm(a_current,n,m)*nu_tilde-dnm(b_current,n,m)*mu_t +
-    //  bdt*( dnm(b_current_hs,n+1,m+1) - dnm(b_current_hs,n+1,m-1) - (n < 2 ? 0 : (dnm(b_current_hs,n-1,m+1) - dnm(b_current_hs,n-1,m-1))) );
-    ffloat g = dt*dnm(a0,n,m)+dnm(a_current,n,m)*nu_tilde-dnm(b_current,n,m)*mu_t +
-      bdt*( ((threadIdx.x<BLOCK_SIZE_M1 && threadIdx.y<BLOCK_SIZE_M1)?b_c[BLOCK_SIZE*(threadIdx.x+1)+threadIdx.y+1]:dnm(b_current_hs,n+1,m+1))- 
-	    ((threadIdx.x<BLOCK_SIZE_M1 && threadIdx.y!=0)?b_c[BLOCK_SIZE*(threadIdx.x+1)+threadIdx.y-1]:dnm(b_current_hs,n+1,m-1)) - 
-	    (n < 2 ? 0 : (
-			  ((threadIdx.x!=0 && threadIdx.y!=BLOCK_SIZE_M1)?b_c[BLOCK_SIZE*(threadIdx.x-1)+threadIdx.y+1]:dnm(b_current_hs,n-1,m+1)) - 
-			  ((threadIdx.x!=0 && threadIdx.y!=0)?b_c[BLOCK_SIZE*(threadIdx.x-1)+threadIdx.y-1]:dnm(b_current_hs,n-1,m-1))
-			  )) );
-
-    //ffloat h = dnm(b_current,n,m)*nu_tilde+dnm(a_current,n,m)*mu_t +
-    //  bdt*( (n==1?2:1)*(n==0?0:(dnm(a_current_hs,n-1,m+1)-dnm(a_current_hs,n-1,m-1))) - dnm(a_current_hs,n+1,m+1) + dnm(a_current_hs,n+1,m-1) );
-
-    ffloat h = dnm(b_current,n,m)*nu_tilde+dnm(a_current,n,m)*mu_t +
-      bdt*( (n==1?2:1)*(n==0?0:(
-				((threadIdx.x!=0 && threadIdx.y!=BLOCK_SIZE_M1)?a_c[BLOCK_SIZE*(threadIdx.x-1)+threadIdx.y+1]:dnm(a_current_hs,n-1,m+1)) -
-				((threadIdx.x!=0 && threadIdx.y!=0)?a_c[BLOCK_SIZE*(threadIdx.x-1)+threadIdx.y-1]:dnm(a_current_hs,n-1,m-1))
-				)) - 
-	    ((threadIdx.x<BLOCK_SIZE_M1 && threadIdx.y<BLOCK_SIZE_M1)?a_c[BLOCK_SIZE*(threadIdx.x+1)+threadIdx.y+1]:dnm(a_current_hs,n+1,m+1)) + 
-	    ((threadIdx.x<BLOCK_SIZE_M1 && threadIdx.y!=0)?a_c[BLOCK_SIZE*(threadIdx.x+1)+threadIdx.y-1]:dnm(a_current_hs,n+1,m-1)));
+  ffloat h = dnm(b_current,n,m)*nu_tilde+dnm(a_current,n,m)*mu_t +
+    bdt*( (n==1?2:1)*(n==0?0:(
+			      ((threadIdx.x!=0 && threadIdx.y!=BLOCK_SIZE_M1)?a_c[BLOCK_SIZE*(threadIdx.x-1)+threadIdx.y+1]:dnm(a_current_hs,n-1,m+1)) -
+			      ((threadIdx.x!=0 && threadIdx.y!=0)?a_c[BLOCK_SIZE*(threadIdx.x-1)+threadIdx.y-1]:dnm(a_current_hs,n-1,m-1))
+			      )) - 
+	  ((threadIdx.x<BLOCK_SIZE_M1 && threadIdx.y<BLOCK_SIZE_M1)?a_c[BLOCK_SIZE*(threadIdx.x+1)+threadIdx.y+1]:dnm(a_current_hs,n+1,m+1)) + 
+	  ((threadIdx.x<BLOCK_SIZE_M1 && threadIdx.y!=0)?a_c[BLOCK_SIZE*(threadIdx.x+1)+threadIdx.y-1]:dnm(a_current_hs,n+1,m-1)));
 
     ffloat xi = nu2 + mu_t_plus_1*mu_t_plus_1;
     dnm(a_next,n,m) = (g*nu - h*mu_t_plus_1)/xi;
     if( n > 0 ) {
       dnm(b_next,n,m) = (g*mu_t_plus_1 + h*nu)/xi;
     }
-  //}
-} // end of _step_on_grid_k6(...)
+} // end of _step_on_grid_k2(...)
 
-__global__ void _step_on_half_grid_k6(ffloat *a0, ffloat *a_current,    ffloat *b_current,
+__global__ void _step_on_half_grid_k2(ffloat *a0, ffloat *a_current,    ffloat *b_current,
                                   ffloat *a_next,       ffloat *b_next,
                                   ffloat *a_current_hs, ffloat *b_current_hs,
                                   ffloat *a_next_hs,    ffloat *b_next_hs,
@@ -508,156 +317,109 @@ __global__ void _step_on_half_grid_k6(ffloat *a0, ffloat *a_current,    ffloat *
   // step from (t+1/2,t+1) to (t+3/2)
   ffloat mu_t_part = (E_dc + E_omega*cos_omega_t+B*dev_phi_y(m))*dt/2;
   ffloat mu_t_plus_1_part = (E_dc + E_omega*cos_omega_t_plus_dt+B*dev_phi_y(m))*dt/2;
-  //for( int n = 0; n < N; n++ ) {
-    ffloat mu_t = n*mu_t_part;
-    ffloat mu_t_plus_1 = n*mu_t_plus_1_part;
-    ffloat g = dt*dnm(a0,n,m)+dnm(a_current_hs,n,m)*nu_tilde-dnm(b_current_hs,n,m)*mu_t +
-
-      bdt*( ((threadIdx.x<BLOCK_SIZE_M1 && threadIdx.y<BLOCK_SIZE_M1)?b_c[BLOCK_SIZE*(threadIdx.x+1)+threadIdx.y+1]:dnm(b_next,n+1,m+1))- 
-	    ((threadIdx.x<BLOCK_SIZE_M1 && threadIdx.y!=0)?b_c[BLOCK_SIZE*(threadIdx.x+1)+threadIdx.y-1]:dnm(b_next,n+1,m-1)) - 
-	    (n < 2 ? 0 : (
-			  ((threadIdx.x!=0 && threadIdx.y!=BLOCK_SIZE_M1)?b_c[BLOCK_SIZE*(threadIdx.x-1)+threadIdx.y+1]:dnm(b_next,n-1,m+1)) - 
-			  ((threadIdx.x!=0 && threadIdx.y!=0)?b_c[BLOCK_SIZE*(threadIdx.x-1)+threadIdx.y-1]:dnm(b_next,n-1,m-1))
-			  )) );
-
-
-    ffloat h = dnm(b_current_hs,n,m)*nu_tilde+dnm(a_current_hs,n,m)*mu_t +
-      bdt*( (n==1?2:1)*(n==0?0:(
-				((threadIdx.x!=0 && threadIdx.y!=BLOCK_SIZE_M1)?a_c[BLOCK_SIZE*(threadIdx.x-1)+threadIdx.y+1]:dnm(a_next,n-1,m+1)) -
-				((threadIdx.x!=0 && threadIdx.y!=0)?a_c[BLOCK_SIZE*(threadIdx.x-1)+threadIdx.y-1]:dnm(a_next,n-1,m-1))
-				)) - 
-	    ((threadIdx.x<BLOCK_SIZE_M1 && threadIdx.y<BLOCK_SIZE_M1)?a_c[BLOCK_SIZE*(threadIdx.x+1)+threadIdx.y+1]:dnm(a_next,n+1,m+1)) + 
-	    ((threadIdx.x<BLOCK_SIZE_M1 && threadIdx.y!=0)?a_c[BLOCK_SIZE*(threadIdx.x+1)+threadIdx.y-1]:dnm(a_next,n+1,m-1)));
-
-    ffloat xi = nu2 + mu_t_plus_1*mu_t_plus_1;
-    dnm(a_next_hs,n,m) = (g*nu - h*mu_t_plus_1)/xi;
-    if( n > 0 ) {
-      dnm(b_next_hs,n,m) = (g*mu_t_plus_1 + h*nu)/xi;
-    }
-  //}
-} // end of _step_on_half_grid_k6(...)
-
-__global__ void _step_on_grid_k5(ffloat *a0, ffloat *a_current,    ffloat *b_current,
-                              ffloat *a_next,       ffloat *b_next,
-                              ffloat *a_current_hs, ffloat *b_current_hs,
-                              ffloat t, ffloat t_hs,
-                              ffloat cos_omega_t, ffloat cos_omega_t_plus_dt)
-{
-  const int m = blockIdx.y * blockDim.y + threadIdx.y + 1;
-  const int n = blockIdx.x * blockDim.x + threadIdx.x;
-  if( m > TMSIZE || n >= N ) { return; }
-
-  // step from (t,t+1/2) to (t+1)
-  ffloat mu_t_part = (E_dc + E_omega*cos_omega_t+B*dev_phi_y(m))*dt/2;
-  ffloat mu_t_plus_1_part = (E_dc + E_omega*cos_omega_t_plus_dt+B*dev_phi_y(m))*dt/2;
-
-  //for( int n = 0; n < N; n++ ) {
-    ffloat mu_t = n*mu_t_part;
-    ffloat mu_t_plus_1 = n*mu_t_plus_1_part;
-    ffloat g = dt*dnm(a0,n,m)+dnm(a_current,n,m)*nu_tilde-dnm(b_current,n,m)*mu_t +
-      bdt*( dnm(b_current_hs,n+1,m+1) - dnm(b_current_hs,n+1,m-1) - (n < 2 ? 0 : (dnm(b_current_hs,n-1,m+1) - dnm(b_current_hs,n-1,m-1))) );
-    ffloat h = dnm(b_current,n,m)*nu_tilde+dnm(a_current,n,m)*mu_t +
-      bdt*( (n==1?2:1)*(n==0?0:(dnm(a_current_hs,n-1,m+1)-dnm(a_current_hs,n-1,m-1))) - dnm(a_current_hs,n+1,m+1) + dnm(a_current_hs,n+1,m-1) );
-
-    ffloat xi = nu2 + mu_t_plus_1*mu_t_plus_1;
-    dnm(a_next,n,m) = (g*nu - h*mu_t_plus_1)/xi;
-    if( n > 0 ) {
-      dnm(b_next,n,m) = (g*mu_t_plus_1 + h*nu)/xi;
-    }
-  //}
-} // end of _step_on_grid_k1(...)
-
-__global__ void _step_on_half_grid_k5(ffloat *a0, ffloat *a_current,    ffloat *b_current,
-                                  ffloat *a_next,       ffloat *b_next,
-                                  ffloat *a_current_hs, ffloat *b_current_hs,
-                                  ffloat *a_next_hs,    ffloat *b_next_hs,
-                                  ffloat t, ffloat t_hs,
-                                  ffloat cos_omega_t, ffloat cos_omega_t_plus_dt)
-{
-  const int m = blockIdx.y * blockDim.y + threadIdx.y + 1;
-  const int n = blockIdx.x * blockDim.x + threadIdx.x;
-  if( m > TMSIZE || n >= N ) { return; }
-
-  // step from (t+1/2,t+1) to (t+3/2)
-  ffloat mu_t_part = (E_dc + E_omega*cos_omega_t+B*dev_phi_y(m))*dt/2;
-  ffloat mu_t_plus_1_part = (E_dc + E_omega*cos_omega_t_plus_dt+B*dev_phi_y(m))*dt/2;
-  //for( int n = 0; n < N; n++ ) {
-    ffloat mu_t = n*mu_t_part;
-    ffloat mu_t_plus_1 = n*mu_t_plus_1_part;
-    ffloat g = dt*dnm(a0,n,m)+dnm(a_current_hs,n,m)*nu_tilde-dnm(b_current_hs,n,m)*mu_t +
-      bdt*( dnm(b_next,n+1,m+1) - dnm(b_next,n+1,m-1) - (n < 2 ? 0 : (dnm(b_next,n-1,m+1) - dnm(b_next,n-1,m-1))) );
-    ffloat h = dnm(b_current_hs,n,m)*nu_tilde+dnm(a_current_hs,n,m)*mu_t +
-      bdt*( (n==1?2:1)*(n==0?0:(dnm(a_next,n-1,m+1)-dnm(a_next,n-1,m-1))) - dnm(a_next,n+1,m+1) + dnm(a_next,n+1,m-1) );
-    ffloat xi = nu2 + mu_t_plus_1*mu_t_plus_1;
-    dnm(a_next_hs,n,m) = (g*nu - h*mu_t_plus_1)/xi;
-    if( n > 0 ) {
-      dnm(b_next_hs,n,m) = (g*mu_t_plus_1 + h*nu)/xi;
-    }
-  //}
-} // end of _step_on_half_grid_k5(...)
-
-__global__ void _step_on_grid_k1(ffloat *a0, ffloat *a_current,    ffloat *b_current,
-                              ffloat *a_next,       ffloat *b_next,
-                              ffloat *a_current_hs, ffloat *b_current_hs,
-                              ffloat t, ffloat t_hs,
-                              ffloat cos_omega_t, ffloat cos_omega_t_plus_dt)
-{
-  const int m = threadIdx.x+blockDim.x*blockIdx.x;
-  if( m==0 || m > TMSIZE ) { return; }
-
-  // step from (t,t+1/2) to (t+1)
-  ffloat mu_t_part = (E_dc + E_omega*cos_omega_t+B*dev_phi_y(m))*dt/2;
-  ffloat mu_t_plus_1_part = (E_dc + E_omega*cos_omega_t_plus_dt+B*dev_phi_y(m))*dt/2;
-
-  for( int n = 0; n < N; n++ ) {
-    ffloat mu_t = n*mu_t_part;
-    ffloat mu_t_plus_1 = n*mu_t_plus_1_part;
-    ffloat g = dt*dnm(a0,n,m)+dnm(a_current,n,m)*nu_tilde-dnm(b_current,n,m)*mu_t +
-      bdt*( dnm(b_current_hs,n+1,m+1) - dnm(b_current_hs,n+1,m-1) - (n < 2 ? 0 : (dnm(b_current_hs,n-1,m+1) - dnm(b_current_hs,n-1,m-1))) );
-    ffloat h = dnm(b_current,n,m)*nu_tilde+dnm(a_current,n,m)*mu_t +
-      bdt*( (n==1?2:1)*(n==0?0:(dnm(a_current_hs,n-1,m+1)-dnm(a_current_hs,n-1,m-1))) - dnm(a_current_hs,n+1,m+1) + dnm(a_current_hs,n+1,m-1) );
-
-    ffloat xi = nu2 + mu_t_plus_1*mu_t_plus_1;
-    dnm(a_next,n,m) = (g*nu - h*mu_t_plus_1)/xi;
-    if( n > 0 ) {
-      dnm(b_next,n,m) = (g*mu_t_plus_1 + h*nu)/xi;
-    }
+  ffloat mu_t = n*mu_t_part;
+  ffloat mu_t_plus_1 = n*mu_t_plus_1_part;
+  ffloat g = dt*dnm(a0,n,m)+dnm(a_current_hs,n,m)*nu_tilde-dnm(b_current_hs,n,m)*mu_t +
+    
+    bdt*( ((threadIdx.x<BLOCK_SIZE_M1 && threadIdx.y<BLOCK_SIZE_M1)?b_c[BLOCK_SIZE*(threadIdx.x+1)+threadIdx.y+1]:dnm(b_next,n+1,m+1))- 
+	  ((threadIdx.x<BLOCK_SIZE_M1 && threadIdx.y!=0)?b_c[BLOCK_SIZE*(threadIdx.x+1)+threadIdx.y-1]:dnm(b_next,n+1,m-1)) - 
+	  (n < 2 ? 0 : (
+			((threadIdx.x!=0 && threadIdx.y!=BLOCK_SIZE_M1)?b_c[BLOCK_SIZE*(threadIdx.x-1)+threadIdx.y+1]:dnm(b_next,n-1,m+1)) - 
+			((threadIdx.x!=0 && threadIdx.y!=0)?b_c[BLOCK_SIZE*(threadIdx.x-1)+threadIdx.y-1]:dnm(b_next,n-1,m-1))
+			)) );
+  
+  
+  ffloat h = dnm(b_current_hs,n,m)*nu_tilde+dnm(a_current_hs,n,m)*mu_t +
+    bdt*( (n==1?2:1)*(n==0?0:(
+			      ((threadIdx.x!=0 && threadIdx.y!=BLOCK_SIZE_M1)?a_c[BLOCK_SIZE*(threadIdx.x-1)+threadIdx.y+1]:dnm(a_next,n-1,m+1)) -
+			      ((threadIdx.x!=0 && threadIdx.y!=0)?a_c[BLOCK_SIZE*(threadIdx.x-1)+threadIdx.y-1]:dnm(a_next,n-1,m-1))
+			      )) - 
+	  ((threadIdx.x<BLOCK_SIZE_M1 && threadIdx.y<BLOCK_SIZE_M1)?a_c[BLOCK_SIZE*(threadIdx.x+1)+threadIdx.y+1]:dnm(a_next,n+1,m+1)) + 
+	  ((threadIdx.x<BLOCK_SIZE_M1 && threadIdx.y!=0)?a_c[BLOCK_SIZE*(threadIdx.x+1)+threadIdx.y-1]:dnm(a_next,n+1,m-1)));
+  
+  ffloat xi = nu2 + mu_t_plus_1*mu_t_plus_1;
+  dnm(a_next_hs,n,m) = (g*nu - h*mu_t_plus_1)/xi;
+  if( n > 0 ) {
+    dnm(b_next_hs,n,m) = (g*mu_t_plus_1 + h*nu)/xi;
   }
+} // end of _step_on_half_grid_k2(...)
+/** END OF K2 KERNELS **/
+
+/** BEGINING OF K1 KERNELS **/
+/* One thread per point. Not using shared memory. */
+__global__ void _step_on_grid_k1(ffloat *a0, ffloat *a_current,    ffloat *b_current,
+				 ffloat *a_next,       ffloat *b_next,
+				 ffloat *a_current_hs, ffloat *b_current_hs,
+				 ffloat t, ffloat t_hs,
+				 ffloat cos_omega_t, ffloat cos_omega_t_plus_dt)
+{
+  const int m = blockIdx.y * blockDim.y + threadIdx.y + 1;
+  const int n = blockIdx.x * blockDim.x + threadIdx.x;
+  if( m > TMSIZE || n >= N ) { return; }
+
+  // step from (t,t+1/2) to (t+1)
+  ffloat mu_t_part	  = (E_dc + E_omega*cos_omega_t+B*dev_phi_y(m))*dt/2;
+  ffloat mu_t_plus_1_part = (E_dc + E_omega*cos_omega_t_plus_dt+B*dev_phi_y(m))*dt/2;
+
+  ffloat mu_t		  =  n*mu_t_part;
+  ffloat mu_t_plus_1	  = n*mu_t_plus_1_part;
+
+  ffloat g = dt*dnm(a0,n,m)+dnm(a_current,n,m)*nu_tilde-dnm(b_current,n,m)*mu_t +
+    bdt*( dnm(b_current_hs,n+1,m+1) - dnm(b_current_hs,n+1,m-1) - 
+	  (n < 2 ? 0 : (dnm(b_current_hs,n-1,m+1) - dnm(b_current_hs,n-1,m-1))) );
+
+  ffloat h = dnm(b_current,n,m)*nu_tilde+dnm(a_current,n,m)*mu_t +
+    bdt*( (n==1?2:1)*(n==0?0:(dnm(a_current_hs,n-1,m+1)-dnm(a_current_hs,n-1,m-1))) - 
+	  dnm(a_current_hs,n+1,m+1) + dnm(a_current_hs,n+1,m-1) );
+  
+    ffloat xi = nu2 + mu_t_plus_1*mu_t_plus_1;
+    dnm(a_next,n,m) = (g*nu - h*mu_t_plus_1)/xi;
+    if( n > 0 ) {
+      dnm(b_next,n,m) = (g*mu_t_plus_1 + h*nu)/xi;
+    }
 } // end of _step_on_grid_k1(...)
 
 __global__ void _step_on_half_grid_k1(ffloat *a0, ffloat *a_current,    ffloat *b_current,
-                                  ffloat *a_next,       ffloat *b_next,
-                                  ffloat *a_current_hs, ffloat *b_current_hs,
-                                  ffloat *a_next_hs,    ffloat *b_next_hs,
-                                  ffloat t, ffloat t_hs,
-                                  ffloat cos_omega_t, ffloat cos_omega_t_plus_dt)
+				      ffloat *a_next,       ffloat *b_next,
+				      ffloat *a_current_hs, ffloat *b_current_hs,
+				      ffloat *a_next_hs,    ffloat *b_next_hs,
+				      ffloat t, ffloat t_hs,
+				      ffloat cos_omega_t, ffloat cos_omega_t_plus_dt)
 {
-  const int m = threadIdx.x+blockDim.x*blockIdx.x;
-  if( m==0 || m > TMSIZE ) { return; }
+  const int m = blockIdx.y * blockDim.y + threadIdx.y + 1;
+  const int n = blockIdx.x * blockDim.x + threadIdx.x;
+  if( m > TMSIZE || n >= N ) { return; }
 
   // step from (t+1/2,t+1) to (t+3/2)
-  ffloat mu_t_part = (E_dc + E_omega*cos_omega_t+B*dev_phi_y(m))*dt/2;
+  ffloat mu_t_part	  = (E_dc + E_omega*cos_omega_t+B*dev_phi_y(m))*dt/2;
   ffloat mu_t_plus_1_part = (E_dc + E_omega*cos_omega_t_plus_dt+B*dev_phi_y(m))*dt/2;
-  for( int n = 0; n < N; n++ ) {
-    ffloat mu_t = n*mu_t_part;
-    ffloat mu_t_plus_1 = n*mu_t_plus_1_part;
-    ffloat g = dt*dnm(a0,n,m)+dnm(a_current_hs,n,m)*nu_tilde-dnm(b_current_hs,n,m)*mu_t +
-      bdt*( dnm(b_next,n+1,m+1) - dnm(b_next,n+1,m-1) - (n < 2 ? 0 : (dnm(b_next,n-1,m+1) - dnm(b_next,n-1,m-1))) );
-    ffloat h = dnm(b_current_hs,n,m)*nu_tilde+dnm(a_current_hs,n,m)*mu_t +
-      bdt*( (n==1?2:1)*(n==0?0:(dnm(a_next,n-1,m+1)-dnm(a_next,n-1,m-1))) - dnm(a_next,n+1,m+1) + dnm(a_next,n+1,m-1) );
-    ffloat xi = nu2 + mu_t_plus_1*mu_t_plus_1;
-    dnm(a_next_hs,n,m) = (g*nu - h*mu_t_plus_1)/xi;
-    if( n > 0 ) {
-      dnm(b_next_hs,n,m) = (g*mu_t_plus_1 + h*nu)/xi;
-    }
+  ffloat mu_t		  = n*mu_t_part;
+  ffloat mu_t_plus_1	  = n*mu_t_plus_1_part;
+
+  ffloat g = dt*dnm(a0,n,m)+dnm(a_current_hs,n,m)*nu_tilde-dnm(b_current_hs,n,m)*mu_t +
+    bdt*( dnm(b_next,n+1,m+1) - dnm(b_next,n+1,m-1) - 
+	  (n < 2 ? 0 : (dnm(b_next,n-1,m+1) - dnm(b_next,n-1,m-1))) );
+
+  ffloat h = dnm(b_current_hs,n,m)*nu_tilde+dnm(a_current_hs,n,m)*mu_t +
+    bdt*( (n==1?2:1)*(n==0?0:(dnm(a_next,n-1,m+1)-dnm(a_next,n-1,m-1))) - 
+	  dnm(a_next,n+1,m+1) + dnm(a_next,n+1,m-1) );
+
+  ffloat xi = nu2 + mu_t_plus_1*mu_t_plus_1;
+  dnm(a_next_hs,n,m) = (g*nu - h*mu_t_plus_1)/xi;
+  if( n > 0 ) {
+    dnm(b_next_hs,n,m) = (g*mu_t_plus_1 + h*nu)/xi;
   }
 } // end of _step_on_half_grid_k1(...)
+/** END OF K1 KERNELS **/
 
-__global__ void _step_on_grid_k2(ffloat *a0, ffloat *a_current,    ffloat *b_current,
-                              ffloat *a_next,       ffloat *b_next,
-                              ffloat *a_current_hs, ffloat *b_current_hs,
-                              ffloat t, ffloat t_hs,
-                              ffloat cos_omega_t, ffloat cos_omega_t_plus_dt)
+/** BEGINING OF 310 KERNELS **/
+/* One thread per m-number. Not unrolled. Kernel 310 */
+__global__ void _step_on_grid_k3_unroll_1_type_0
+    (ffloat *a0, ffloat *a_current,    ffloat *b_current,
+     ffloat *a_next,       ffloat *b_next,
+     ffloat *a_current_hs, ffloat *b_current_hs,
+     ffloat t, ffloat t_hs,
+     ffloat cos_omega_t, ffloat cos_omega_t_plus_dt)
 {
   const int m = threadIdx.x+blockDim.x*blockIdx.x;
   if( m==0 || m > TMSIZE ) { return; }
@@ -666,7 +428,6 @@ __global__ void _step_on_grid_k2(ffloat *a0, ffloat *a_current,    ffloat *b_cur
   ffloat mu_t_part = (E_dc + E_omega*cos_omega_t+B*dev_phi_y(m))*dt/2;
   ffloat mu_t_plus_1_part = (E_dc + E_omega*cos_omega_t_plus_dt+B*dev_phi_y(m))*dt/2;
 
-  #pragma unroll 1
   for( int n = 0; n < N; n++ ) {
     ffloat mu_t = n*mu_t_part;
     ffloat mu_t_plus_1 = n*mu_t_plus_1_part;
@@ -681,22 +442,22 @@ __global__ void _step_on_grid_k2(ffloat *a0, ffloat *a_current,    ffloat *b_cur
       dnm(b_next,n,m) = (g*mu_t_plus_1 + h*nu)/xi;
     }
   }
-} // end of _step_on_grid_k2(...)
+} // end of _step_on_grid_k3_unroll_1_type_0(...)
 
-__global__ void _step_on_half_grid_k2(ffloat *a0, ffloat *a_current,    ffloat *b_current,
-                                  ffloat *a_next,       ffloat *b_next,
-                                  ffloat *a_current_hs, ffloat *b_current_hs,
-                                  ffloat *a_next_hs,    ffloat *b_next_hs,
-                                  ffloat t, ffloat t_hs,
-                                  ffloat cos_omega_t, ffloat cos_omega_t_plus_dt)
+__global__ void _step_on_half_grid_k3_unroll_1_type_0
+    (ffloat *a0, ffloat *a_current,    ffloat *b_current,
+     ffloat *a_next,       ffloat *b_next,
+     ffloat *a_current_hs, ffloat *b_current_hs,
+     ffloat *a_next_hs,    ffloat *b_next_hs,
+     ffloat t, ffloat t_hs,
+     ffloat cos_omega_t, ffloat cos_omega_t_plus_dt)
 {
   const int m = threadIdx.x+blockDim.x*blockIdx.x;
   if( m==0 || m > TMSIZE ) { return; }
 
   // step from (t+1/2,t+1) to (t+3/2)
-  ffloat mu_t_part = (E_dc + E_omega*cos_omega_t+B*dev_phi_y(m))*dt/2;
+  ffloat mu_t_part        = (E_dc + E_omega*cos_omega_t+B*dev_phi_y(m))*dt/2;
   ffloat mu_t_plus_1_part = (E_dc + E_omega*cos_omega_t_plus_dt+B*dev_phi_y(m))*dt/2;
-  #pragma unroll 1
   for( int n = 0; n < N; n++ ) {
     ffloat mu_t = n*mu_t_part;
     ffloat mu_t_plus_1 = n*mu_t_plus_1_part;
@@ -710,7 +471,616 @@ __global__ void _step_on_half_grid_k2(ffloat *a0, ffloat *a_current,    ffloat *
       dnm(b_next_hs,n,m) = (g*mu_t_plus_1 + h*nu)/xi;
     }
   }
-} // end of _step_on_half_grid_k2(...)
+} // end of _step_on_half_grid_k3_unroll_1_type_0(...)
+/** END OF 310 KERNELS **/
+
+/** BEGINING OF 311 KERNELS **/
+/**
+ * One thread per m-number. Not unrolled. Removed divergent flows by taking calculations 
+ * at n=0 and n=1 out of the loops. Kernel 311
+ */
+__global__ void _step_on_grid_k3_unroll_1_type_1
+    (ffloat *a0, ffloat *a_current,    ffloat *b_current,
+     ffloat *a_next,       ffloat *b_next,
+     ffloat *a_current_hs, ffloat *b_current_hs,
+     ffloat t, ffloat t_hs,
+     ffloat cos_omega_t, ffloat cos_omega_t_plus_dt)
+{
+  const int m = threadIdx.x+blockDim.x*blockIdx.x;
+  if( m==0 || m > TMSIZE ) { return; }
+
+  // step from (t,t+1/2) to (t+1)
+  ffloat mu_t_part = (E_dc + E_omega*cos_omega_t+B*dev_phi_y(m))*dt/2;
+  ffloat mu_t_plus_1_part = (E_dc + E_omega*cos_omega_t_plus_dt+B*dev_phi_y(m))*dt/2;
+
+  ffloat mu_t = 0;
+  ffloat mu_t_plus_1 = 0;
+  ffloat g = dt*dnm(a0,0,m)+dnm(a_current,0,m)*nu_tilde-dnm(b_current,0,m)*mu_t +
+    bdt*( dnm(b_current_hs,1,m+1) - dnm(b_current_hs,1,m-1) );
+  ffloat h = dnm(b_current,0,m)*nu_tilde+dnm(a_current,0,m)*mu_t +
+    bdt*( - dnm(a_current_hs,1,m+1) + dnm(a_current_hs,1,m-1) );
+  
+  ffloat xi = nu2 + mu_t_plus_1*mu_t_plus_1;
+  dnm(a_next,0,m) = (g*nu - h*mu_t_plus_1)/xi;
+
+  mu_t = mu_t_part;
+  mu_t_plus_1 = mu_t_plus_1_part;
+  g = dt*dnm(a0,1,m)+dnm(a_current,1,m)*nu_tilde-dnm(b_current,1,m)*mu_t +
+    bdt*( dnm(b_current_hs,2,m+1) - dnm(b_current_hs,2,m-1) );
+  h = dnm(b_current,1,m)*nu_tilde+dnm(a_current,1,m)*mu_t +
+    bdt*( 2*((dnm(a_current_hs,0,m+1)-dnm(a_current_hs,0,m-1))) - dnm(a_current_hs,2,m+1) + dnm(a_current_hs,2,m-1) );
+  
+  xi = nu2 + mu_t_plus_1*mu_t_plus_1;
+  dnm(a_next,1,m) = (g*nu - h*mu_t_plus_1)/xi;
+  dnm(b_next,1,m) = (g*mu_t_plus_1 + h*nu)/xi;
+
+  for( int n = 2; n < N; n++ ) {
+    mu_t = n*mu_t_part;
+    mu_t_plus_1 = n*mu_t_plus_1_part;
+    g = dt*dnm(a0,n,m)+dnm(a_current,n,m)*nu_tilde-dnm(b_current,n,m)*mu_t +
+      bdt*( dnm(b_current_hs,n+1,m+1) - dnm(b_current_hs,n+1,m-1) - ((dnm(b_current_hs,n-1,m+1) - dnm(b_current_hs,n-1,m-1))) );
+    h = dnm(b_current,n,m)*nu_tilde+dnm(a_current,n,m)*mu_t +
+      bdt*( ((dnm(a_current_hs,n-1,m+1)-dnm(a_current_hs,n-1,m-1))) - dnm(a_current_hs,n+1,m+1) + dnm(a_current_hs,n+1,m-1) );
+
+    xi = nu2 + mu_t_plus_1*mu_t_plus_1;
+    dnm(a_next,n,m) = (g*nu - h*mu_t_plus_1)/xi;
+    dnm(b_next,n,m) = (g*mu_t_plus_1 + h*nu)/xi;
+  }
+} // end of _step_on_grid_k3_unroll_1_type_1(...)
+
+__global__ void _step_on_half_grid_k3_unroll_1_type_1
+    (ffloat *a0, ffloat *a_current,    ffloat *b_current,
+     ffloat *a_next,       ffloat *b_next,
+     ffloat *a_current_hs, ffloat *b_current_hs,
+     ffloat *a_next_hs,    ffloat *b_next_hs,
+     ffloat t, ffloat t_hs,
+     ffloat cos_omega_t, ffloat cos_omega_t_plus_dt)
+{
+  const int m = threadIdx.x+blockDim.x*blockIdx.x;
+  if( m==0 || m > TMSIZE ) { return; }
+
+  // step from (t+1/2,t+1) to (t+3/2)
+  ffloat mu_t_part        = (E_dc + E_omega*cos_omega_t+B*dev_phi_y(m))*dt/2;
+  ffloat mu_t_plus_1_part = (E_dc + E_omega*cos_omega_t_plus_dt+B*dev_phi_y(m))*dt/2;
+
+  ffloat mu_t = 0;
+  ffloat mu_t_plus_1 = 0;
+  ffloat g = dt*dnm(a0,0,m)+dnm(a_current_hs,0,m)*nu_tilde-dnm(b_current_hs,0,m)*mu_t +
+    bdt*( dnm(b_next,1,m+1) - dnm(b_next,1,m-1) );
+  ffloat h = dnm(b_current_hs,0,m)*nu_tilde+dnm(a_current_hs,0,m)*mu_t +
+    bdt*( - dnm(a_next,1,m+1) + dnm(a_next,1,m-1) );
+  ffloat xi = nu2 + mu_t_plus_1*mu_t_plus_1;
+  dnm(a_next_hs,0,m) = (g*nu - h*mu_t_plus_1)/xi;
+
+  mu_t = mu_t_part;
+  mu_t_plus_1 = mu_t_plus_1_part;
+  g = dt*dnm(a0,1,m)+dnm(a_current_hs,1,m)*nu_tilde-dnm(b_current_hs,1,m)*mu_t +
+    bdt*( dnm(b_next,2,m+1) - dnm(b_next,2,m-1) );
+  h = dnm(b_current_hs,1,m)*nu_tilde+dnm(a_current_hs,1,m)*mu_t +
+    bdt*( 2*((dnm(a_next,0,m+1)-dnm(a_next,0,m-1))) - dnm(a_next,2,m+1) + dnm(a_next,2,m-1) );
+  xi = nu2 + mu_t_plus_1*mu_t_plus_1;
+  dnm(a_next_hs,1,m) = (g*nu - h*mu_t_plus_1)/xi;
+  dnm(b_next_hs,1,m) = (g*mu_t_plus_1 + h*nu)/xi;
+
+  for( int n = 2; n < N; n++ ) {
+    mu_t = n*mu_t_part;
+    mu_t_plus_1 = n*mu_t_plus_1_part;
+    g = dt*dnm(a0,n,m)+dnm(a_current_hs,n,m)*nu_tilde-dnm(b_current_hs,n,m)*mu_t +
+      bdt*( dnm(b_next,n+1,m+1) - dnm(b_next,n+1,m-1) - ((dnm(b_next,n-1,m+1) - dnm(b_next,n-1,m-1))) );
+    h = dnm(b_current_hs,n,m)*nu_tilde+dnm(a_current_hs,n,m)*mu_t +
+      bdt*( ((dnm(a_next,n-1,m+1)-dnm(a_next,n-1,m-1))) - dnm(a_next,n+1,m+1) + dnm(a_next,n+1,m-1) );
+    xi = nu2 + mu_t_plus_1*mu_t_plus_1;
+    dnm(a_next_hs,n,m) = (g*nu - h*mu_t_plus_1)/xi;
+    dnm(b_next_hs,n,m) = (g*mu_t_plus_1 + h*nu)/xi;
+  }
+} // end of _step_on_half_grid_k3_unroll_1_type_1(...)
+/** END OF 311 KERNELS **/
+
+/** BEGINING OF 321 KERNELS **/
+/**
+ * One thread per m-number. Unrolled twice. Divergent flows.
+ */
+__global__ void _step_on_grid_k3_unroll_2_type_1
+    (ffloat *a0, ffloat *a_current,    ffloat *b_current,
+     ffloat *a_next,       ffloat *b_next,
+     ffloat *a_current_hs, ffloat *b_current_hs,
+     ffloat t, ffloat t_hs,
+     ffloat cos_omega_t, ffloat cos_omega_t_plus_dt)
+{
+  const int m = threadIdx.x+blockDim.x*blockIdx.x;
+  if( m==0 || m > TMSIZE ) { return; }
+
+  // step from (t,t+1/2) to (t+1)
+  ffloat mu_t_part = (E_dc + E_omega*cos_omega_t+B*dev_phi_y(m))*dt/2;
+  ffloat mu_t_plus_1_part = (E_dc + E_omega*cos_omega_t_plus_dt+B*dev_phi_y(m))*dt/2;
+
+  ffloat mu_t = 0;
+  ffloat mu_t_plus_1 = 0;
+  ffloat g = dt*dnm(a0,0,m)+dnm(a_current,0,m)*nu_tilde-dnm(b_current,0,m)*mu_t +
+    bdt*( dnm(b_current_hs,1,m+1) - dnm(b_current_hs,1,m-1) );
+  ffloat h = dnm(b_current,0,m)*nu_tilde+dnm(a_current,0,m)*mu_t +
+    bdt*( - dnm(a_current_hs,1,m+1) + dnm(a_current_hs,1,m-1) );
+  
+  ffloat xi = nu2 + mu_t_plus_1*mu_t_plus_1;
+  dnm(a_next,0,m) = (g*nu - h*mu_t_plus_1)/xi;
+
+  mu_t = mu_t_part;
+  mu_t_plus_1 = mu_t_plus_1_part;
+  g = dt*dnm(a0,1,m)+dnm(a_current,1,m)*nu_tilde-dnm(b_current,1,m)*mu_t +
+    bdt*( dnm(b_current_hs,2,m+1) - dnm(b_current_hs,2,m-1) );
+  h = dnm(b_current,1,m)*nu_tilde+dnm(a_current,1,m)*mu_t +
+    bdt*( 2*((dnm(a_current_hs,0,m+1)-dnm(a_current_hs,0,m-1))) - dnm(a_current_hs,2,m+1) + dnm(a_current_hs,2,m-1) );
+  
+  xi = nu2 + mu_t_plus_1*mu_t_plus_1;
+  dnm(a_next,1,m) = (g*nu - h*mu_t_plus_1)/xi;
+  dnm(b_next,1,m) = (g*mu_t_plus_1 + h*nu)/xi;
+
+  for( int n = 2; n < (N-2); n += 2 ) {
+    mu_t = n*mu_t_part;
+    mu_t_plus_1 = n*mu_t_plus_1_part;
+    g = dt*dnm(a0,n,m)+dnm(a_current,n,m)*nu_tilde-dnm(b_current,n,m)*mu_t +
+      bdt*( dnm(b_current_hs,n+1,m+1) - dnm(b_current_hs,n+1,m-1) - ((dnm(b_current_hs,n-1,m+1) - dnm(b_current_hs,n-1,m-1))) );
+    h = dnm(b_current,n,m)*nu_tilde+dnm(a_current,n,m)*mu_t +
+      bdt*( ((dnm(a_current_hs,n-1,m+1)-dnm(a_current_hs,n-1,m-1))) - dnm(a_current_hs,n+1,m+1) + dnm(a_current_hs,n+1,m-1) );
+
+    xi = nu2 + mu_t_plus_1*mu_t_plus_1;
+    dnm(a_next,n,m) = (g*nu - h*mu_t_plus_1)/xi;
+    dnm(b_next,n,m) = (g*mu_t_plus_1 + h*nu)/xi;
+
+    //int (n+1) = n + 1;
+    //if( (n+1) >= N ) { break; }
+
+    ffloat mu_t_2 = (n+1)*mu_t_part;
+    ffloat mu_t_plus_1_2 = (n+1)*mu_t_plus_1_part;
+    ffloat g2 = dt*dnm(a0,(n+1),m)+dnm(a_current,(n+1),m)*nu_tilde-dnm(b_current,(n+1),m)*mu_t_2 +
+      bdt*( dnm(b_current_hs,(n+1)+1,m+1) - dnm(b_current_hs,(n+1)+1,m-1) - ((dnm(b_current_hs,(n+1)-1,m+1) - dnm(b_current_hs,(n+1)-1,m-1))) );
+    ffloat h2 = dnm(b_current,(n+1),m)*nu_tilde+dnm(a_current,(n+1),m)*mu_t_2 +
+      bdt*( ((dnm(a_current_hs,(n+1)-1,m+1)-dnm(a_current_hs,(n+1)-1,m-1))) - dnm(a_current_hs,(n+1)+1,m+1) + dnm(a_current_hs,(n+1)+1,m-1) );
+
+    ffloat xi2 = nu2 + mu_t_plus_1_2*mu_t_plus_1_2;
+    dnm(a_next,(n+1),m) = (g2*nu - h2*mu_t_plus_1_2)/xi2;
+    dnm(b_next,(n+1),m) = (g2*mu_t_plus_1_2 + h2*nu)/xi2;
+  }
+} // end of _step_on_grid_k3_unroll_2_type_1(...)
+
+__global__ void _step_on_half_grid_k3_unroll_2_type_1
+    (ffloat *a0, ffloat *a_current,    ffloat *b_current,
+     ffloat *a_next,       ffloat *b_next,
+     ffloat *a_current_hs, ffloat *b_current_hs,
+     ffloat *a_next_hs,    ffloat *b_next_hs,
+     ffloat t, ffloat t_hs,
+     ffloat cos_omega_t, ffloat cos_omega_t_plus_dt)
+{
+  const int m = threadIdx.x+blockDim.x*blockIdx.x;
+  if( m==0 || m > TMSIZE ) { return; }
+
+  // step from (t+1/2,t+1) to (t+3/2)
+  ffloat mu_t_part        = (E_dc + E_omega*cos_omega_t+B*dev_phi_y(m))*dt/2;
+  ffloat mu_t_plus_1_part = (E_dc + E_omega*cos_omega_t_plus_dt+B*dev_phi_y(m))*dt/2;
+
+  ffloat mu_t = 0;
+  ffloat mu_t_plus_1 = 0;
+  ffloat g = dt*dnm(a0,0,m)+dnm(a_current_hs,0,m)*nu_tilde-dnm(b_current_hs,0,m)*mu_t +
+    bdt*( dnm(b_next,1,m+1) - dnm(b_next,1,m-1) );
+  ffloat h = dnm(b_current_hs,0,m)*nu_tilde+dnm(a_current_hs,0,m)*mu_t +
+    bdt*( - dnm(a_next,1,m+1) + dnm(a_next,1,m-1) );
+  ffloat xi = nu2 + mu_t_plus_1*mu_t_plus_1;
+  dnm(a_next_hs,0,m) = (g*nu - h*mu_t_plus_1)/xi;
+
+  mu_t = mu_t_part;
+  mu_t_plus_1 = mu_t_plus_1_part;
+  g = dt*dnm(a0,1,m)+dnm(a_current_hs,1,m)*nu_tilde-dnm(b_current_hs,1,m)*mu_t +
+    bdt*( dnm(b_next,2,m+1) - dnm(b_next,2,m-1) );
+  h = dnm(b_current_hs,1,m)*nu_tilde+dnm(a_current_hs,1,m)*mu_t +
+    bdt*( 2*((dnm(a_next,0,m+1)-dnm(a_next,0,m-1))) - dnm(a_next,2,m+1) + dnm(a_next,2,m-1) );
+  xi = nu2 + mu_t_plus_1*mu_t_plus_1;
+  dnm(a_next_hs,1,m) = (g*nu - h*mu_t_plus_1)/xi;
+  dnm(b_next_hs,1,m) = (g*mu_t_plus_1 + h*nu)/xi;
+
+  for( int n = 2; n < (N-2); n += 2 ) {
+    mu_t = n*mu_t_part;
+    mu_t_plus_1 = n*mu_t_plus_1_part;
+    ffloat mu_t_2 = mu_t + mu_t_part;
+    ffloat mu_t_plus_1_2 = mu_t_plus_1 + mu_t_plus_1_part;
+
+    g = dt*dnm(a0,n,m)+dnm(a_current_hs,n,m)*nu_tilde-dnm(b_current_hs,n,m)*mu_t +
+      bdt*( dnm(b_next,n+1,m+1) - dnm(b_next,n+1,m-1) - ((dnm(b_next,n-1,m+1) - dnm(b_next,n-1,m-1))) );
+
+    ffloat g2 = dt*dnm(a0,(n+1),m)+dnm(a_current_hs,(n+1),m)*nu_tilde-dnm(b_current_hs,(n+1),m)*mu_t_2 +
+      bdt*( dnm(b_next,(n+1)+1,m+1) - dnm(b_next,(n+1)+1,m-1) - ((dnm(b_next,(n+1)-1,m+1) - dnm(b_next,(n+1)-1,m-1))) );
+
+    h = dnm(b_current_hs,n,m)*nu_tilde+dnm(a_current_hs,n,m)*mu_t +
+      bdt*( ((dnm(a_next,n-1,m+1)-dnm(a_next,n-1,m-1))) - dnm(a_next,n+1,m+1) + dnm(a_next,n+1,m-1) );
+    ffloat h2 = dnm(b_current_hs,(n+1),m)*nu_tilde+dnm(a_current_hs,(n+1),m)*mu_t_2 +
+      bdt*( ((dnm(a_next,(n+1)-1,m+1)-dnm(a_next,(n+1)-1,m-1))) - dnm(a_next,(n+1)+1,m+1) + dnm(a_next,(n+1)+1,m-1) );
+
+    xi = nu2 + mu_t_plus_1*mu_t_plus_1;
+    dnm(a_next_hs,n,m) = (g*nu - h*mu_t_plus_1)/xi;
+    dnm(b_next_hs,n,m) = (g*mu_t_plus_1 + h*nu)/xi;
+
+    //int (n+1) = n + 1;
+    //if( (n+1) >= N ) { break; }
+    ffloat xi2 = nu2 + mu_t_plus_1_2*mu_t_plus_1_2;
+    dnm(a_next_hs,(n+1),m) = (g2*nu - h2*mu_t_plus_1_2)/xi2;
+    dnm(b_next_hs,(n+1),m) = (g2*mu_t_plus_1_2 + h2*nu)/xi2;
+  }
+} // end of _step_on_half_grid_k3_unroll_2_type_1(...)
+/** END OF 321 KERNELS **/
+
+/** BEGINING OF 341 KERNELS **/
+/**
+ * One thread per m-number. Unrolled 4 times. Removed divergent flows by taking calculations 
+ * at n=0 and n=1 out of the loops. Kernel 341
+ */
+__global__ void _step_on_grid_k3_unroll_4_type_1
+    (ffloat *a0, ffloat *a_current,    ffloat *b_current,
+     ffloat *a_next,       ffloat *b_next,
+     ffloat *a_current_hs, ffloat *b_current_hs,
+     ffloat t, ffloat t_hs,
+     ffloat cos_omega_t, ffloat cos_omega_t_plus_dt)
+{
+  const int m = threadIdx.x+blockDim.x*blockIdx.x;
+  if( m==0 || m > TMSIZE ) { return; }
+
+  // step from (t,t+1/2) to (t+1)
+  ffloat mu_t_part = (E_dc + E_omega*cos_omega_t+B*dev_phi_y(m))*dt/2;
+  ffloat mu_t_plus_1_part = (E_dc + E_omega*cos_omega_t_plus_dt+B*dev_phi_y(m))*dt/2;
+
+  ffloat mu_t = 0;
+  ffloat mu_t_plus_1 = 0;
+  ffloat g = dt*dnm(a0,0,m)+dnm(a_current,0,m)*nu_tilde-dnm(b_current,0,m)*mu_t +
+    bdt*( dnm(b_current_hs,1,m+1) - dnm(b_current_hs,1,m-1) );
+  ffloat h = dnm(b_current,0,m)*nu_tilde+dnm(a_current,0,m)*mu_t +
+    bdt*( - dnm(a_current_hs,1,m+1) + dnm(a_current_hs,1,m-1) );
+  
+  ffloat xi = nu2 + mu_t_plus_1*mu_t_plus_1;
+  dnm(a_next,0,m) = (g*nu - h*mu_t_plus_1)/xi;
+
+  mu_t = mu_t_part;
+  mu_t_plus_1 = mu_t_plus_1_part;
+  g = dt*dnm(a0,1,m)+dnm(a_current,1,m)*nu_tilde-dnm(b_current,1,m)*mu_t +
+    bdt*( dnm(b_current_hs,2,m+1) - dnm(b_current_hs,2,m-1) );
+  h = dnm(b_current,1,m)*nu_tilde+dnm(a_current,1,m)*mu_t +
+    bdt*( 2*((dnm(a_current_hs,0,m+1)-dnm(a_current_hs,0,m-1))) - dnm(a_current_hs,2,m+1) + dnm(a_current_hs,2,m-1) );
+  
+  xi = nu2 + mu_t_plus_1*mu_t_plus_1;
+  dnm(a_next,1,m) = (g*nu - h*mu_t_plus_1)/xi;
+  dnm(b_next,1,m) = (g*mu_t_plus_1 + h*nu)/xi;
+
+  for( int n = 2; n < (N-4); n += 4 ) {
+    mu_t = n*mu_t_part;
+    ffloat mu_t_2 = mu_t + mu_t_part;
+    ffloat mu_t_3 = mu_t_2 + mu_t_part;
+    ffloat mu_t_4 = mu_t_3 + mu_t_part;
+
+    mu_t_plus_1 = n*mu_t_plus_1_part;
+    ffloat mu_t_plus_1_2 = mu_t_plus_1 + mu_t_plus_1_part;
+    ffloat mu_t_plus_1_3 = mu_t_plus_1_2 + mu_t_plus_1_part;
+    ffloat mu_t_plus_1_4 = mu_t_plus_1_3 + mu_t_plus_1_part;
+
+    g = dt*dnm(a0,n,m)+dnm(a_current,n,m)*nu_tilde-dnm(b_current,n,m)*mu_t +
+      bdt*( dnm(b_current_hs,n+1,m+1) - dnm(b_current_hs,n+1,m-1) - ((dnm(b_current_hs,n-1,m+1) - dnm(b_current_hs,n-1,m-1))) );
+
+    ffloat g2 = dt*dnm(a0,(n+1),m)+dnm(a_current,(n+1),m)*nu_tilde-dnm(b_current,(n+1),m)*mu_t_2 +
+      bdt*( dnm(b_current_hs,(n+1)+1,m+1) - dnm(b_current_hs,(n+1)+1,m-1) - ((dnm(b_current_hs,(n+1)-1,m+1) - dnm(b_current_hs,(n+1)-1,m-1))) );
+
+    ffloat g3 = dt*dnm(a0,(n+2),m)+dnm(a_current,(n+2),m)*nu_tilde-dnm(b_current,(n+2),m)*mu_t_3 +
+      bdt*( dnm(b_current_hs,(n+2)+1,m+1) - dnm(b_current_hs,(n+2)+1,m-1) - ((dnm(b_current_hs,(n+2)-1,m+1) - dnm(b_current_hs,(n+2)-1,m-1))) );
+
+    ffloat g4 = dt*dnm(a0,(n+3),m)+dnm(a_current,(n+3),m)*nu_tilde-dnm(b_current,(n+3),m)*mu_t_4 +
+      bdt*( dnm(b_current_hs,(n+3)+1,m+1) - dnm(b_current_hs,(n+3)+1,m-1) - ((dnm(b_current_hs,(n+3)-1,m+1) - dnm(b_current_hs,(n+3)-1,m-1))) );
+
+    h = dnm(b_current,n,m)*nu_tilde+dnm(a_current,n,m)*mu_t +
+      bdt*( ((dnm(a_current_hs,n-1,m+1)-dnm(a_current_hs,n-1,m-1))) - dnm(a_current_hs,n+1,m+1) + dnm(a_current_hs,n+1,m-1) );
+
+    ffloat h2 = dnm(b_current,(n+1),m)*nu_tilde+dnm(a_current,(n+1),m)*mu_t_2 +
+      bdt*( ((dnm(a_current_hs,(n+1)-1,m+1)-dnm(a_current_hs,(n+1)-1,m-1))) - dnm(a_current_hs,(n+1)+1,m+1) + dnm(a_current_hs,(n+1)+1,m-1) );
+
+    ffloat h3 = dnm(b_current,(n+2),m)*nu_tilde+dnm(a_current,(n+2),m)*mu_t_3 +
+      bdt*( ((dnm(a_current_hs,(n+2)-1,m+1)-dnm(a_current_hs,(n+2)-1,m-1))) - dnm(a_current_hs,(n+2)+1,m+1) + dnm(a_current_hs,(n+2)+1,m-1) );
+
+    ffloat h4 = dnm(b_current,(n+3),m)*nu_tilde+dnm(a_current,(n+3),m)*mu_t_4 +
+      bdt*( ((dnm(a_current_hs,(n+3)-1,m+1)-dnm(a_current_hs,(n+3)-1,m-1))) - dnm(a_current_hs,(n+3)+1,m+1) + dnm(a_current_hs,(n+3)+1,m-1) );
+
+    xi = nu2 + mu_t_plus_1*mu_t_plus_1;
+    dnm(a_next,n,m) = (g*nu - h*mu_t_plus_1)/xi;
+    dnm(b_next,n,m) = (g*mu_t_plus_1 + h*nu)/xi;
+
+    //int (n+1) = n + 1;
+    //if( (n+1) >= N ) { break; }
+
+    ffloat xi2 = nu2 + mu_t_plus_1_2*mu_t_plus_1_2;
+    dnm(a_next,(n+1),m) = (g2*nu - h2*mu_t_plus_1_2)/xi2;
+    dnm(b_next,(n+1),m) = (g2*mu_t_plus_1_2 + h2*nu)/xi2;
+
+    ffloat xi3 = nu2 + mu_t_plus_1_3*mu_t_plus_1_3;
+    dnm(a_next,(n+2),m) = (g3*nu - h3*mu_t_plus_1_3)/xi3;
+    dnm(b_next,(n+2),m) = (g3*mu_t_plus_1_3 + h3*nu)/xi3;
+
+    ffloat xi4 = nu2 + mu_t_plus_1_3*mu_t_plus_1_4;
+    dnm(a_next,(n+3),m) = (g4*nu - h4*mu_t_plus_1_4)/xi4;
+    dnm(b_next,(n+3),m) = (g4*mu_t_plus_1_4 + h4*nu)/xi4;
+  }
+} // end of _step_on_grid_k3_unroll_4_type_1(...)
+
+__global__ void _step_on_half_grid_k3_unroll_4_type_1
+    (ffloat *a0, ffloat *a_current,    ffloat *b_current,
+     ffloat *a_next,       ffloat *b_next,
+     ffloat *a_current_hs, ffloat *b_current_hs,
+     ffloat *a_next_hs,    ffloat *b_next_hs,
+     ffloat t, ffloat t_hs,
+     ffloat cos_omega_t, ffloat cos_omega_t_plus_dt)
+{
+  const int m = threadIdx.x+blockDim.x*blockIdx.x;
+  if( m==0 || m > TMSIZE ) { return; }
+
+  // step from (t+1/2,t+1) to (t+3/2)
+  ffloat mu_t_part        = (E_dc + E_omega*cos_omega_t+B*dev_phi_y(m))*dt/2;
+  ffloat mu_t_plus_1_part = (E_dc + E_omega*cos_omega_t_plus_dt+B*dev_phi_y(m))*dt/2;
+
+  ffloat mu_t = 0;
+  ffloat mu_t_plus_1 = 0;
+  ffloat g = dt*dnm(a0,0,m)+dnm(a_current_hs,0,m)*nu_tilde-dnm(b_current_hs,0,m)*mu_t +
+    bdt*( dnm(b_next,1,m+1) - dnm(b_next,1,m-1) );
+  ffloat h = dnm(b_current_hs,0,m)*nu_tilde+dnm(a_current_hs,0,m)*mu_t +
+    bdt*( - dnm(a_next,1,m+1) + dnm(a_next,1,m-1) );
+  ffloat xi = nu2 + mu_t_plus_1*mu_t_plus_1;
+  dnm(a_next_hs,0,m) = (g*nu - h*mu_t_plus_1)/xi;
+
+  mu_t = mu_t_part;
+  mu_t_plus_1 = mu_t_plus_1_part;
+  g = dt*dnm(a0,1,m)+dnm(a_current_hs,1,m)*nu_tilde-dnm(b_current_hs,1,m)*mu_t +
+    bdt*( dnm(b_next,2,m+1) - dnm(b_next,2,m-1) );
+  h = dnm(b_current_hs,1,m)*nu_tilde+dnm(a_current_hs,1,m)*mu_t +
+    bdt*( 2*((dnm(a_next,0,m+1)-dnm(a_next,0,m-1))) - dnm(a_next,2,m+1) + dnm(a_next,2,m-1) );
+  xi = nu2 + mu_t_plus_1*mu_t_plus_1;
+  dnm(a_next_hs,1,m) = (g*nu - h*mu_t_plus_1)/xi;
+  dnm(b_next_hs,1,m) = (g*mu_t_plus_1 + h*nu)/xi;
+
+  for( int n = 2; n < (N-4); n += 4 ) {
+    mu_t = n*mu_t_part;
+    ffloat mu_t_2 = mu_t   + mu_t_part;
+    ffloat mu_t_3 = mu_t_2 + mu_t_part;
+    ffloat mu_t_4 = mu_t_3 + mu_t_part;
+
+    mu_t_plus_1 = n*mu_t_plus_1_part;
+    ffloat mu_t_plus_1_2 = mu_t_plus_1 + mu_t_plus_1_part;
+    ffloat mu_t_plus_1_3 = mu_t_plus_1_2 + mu_t_plus_1_part;
+    ffloat mu_t_plus_1_4 = mu_t_plus_1_3 + mu_t_plus_1_part;
+
+    g = dt*dnm(a0,n,m)+dnm(a_current_hs,n,m)*nu_tilde-dnm(b_current_hs,n,m)*mu_t +
+      bdt*( dnm(b_next,n+1,m+1) - dnm(b_next,n+1,m-1) - ((dnm(b_next,n-1,m+1) - dnm(b_next,n-1,m-1))) );
+
+    ffloat g2 = dt*dnm(a0,(n+1),m)+dnm(a_current_hs,(n+1),m)*nu_tilde-dnm(b_current_hs,(n+1),m)*mu_t_2 +
+      bdt*( dnm(b_next,(n+1)+1,m+1) - dnm(b_next,(n+1)+1,m-1) - ((dnm(b_next,(n+1)-1,m+1) - dnm(b_next,(n+1)-1,m-1))) );
+
+    ffloat g3 = dt*dnm(a0,(n+2),m)+dnm(a_current_hs,(n+2),m)*nu_tilde-dnm(b_current_hs,(n+2),m)*mu_t_3 +
+      bdt*( dnm(b_next,(n+2)+1,m+1) - dnm(b_next,(n+2)+1,m-1) - ((dnm(b_next,(n+2)-1,m+1) - dnm(b_next,(n+2)-1,m-1))) );
+
+    ffloat g4 = dt*dnm(a0,(n+3),m)+dnm(a_current_hs,(n+3),m)*nu_tilde-dnm(b_current_hs,(n+3),m)*mu_t_4 +
+      bdt*( dnm(b_next,(n+3)+1,m+1) - dnm(b_next,(n+3)+1,m-1) - ((dnm(b_next,(n+3)-1,m+1) - dnm(b_next,(n+3)-1,m-1))) );
+
+    h = dnm(b_current_hs,n,m)*nu_tilde+dnm(a_current_hs,n,m)*mu_t +
+      bdt*( ((dnm(a_next,n-1,m+1)-dnm(a_next,n-1,m-1))) - dnm(a_next,n+1,m+1) + dnm(a_next,n+1,m-1) );
+
+    ffloat h2 = dnm(b_current_hs,(n+1),m)*nu_tilde+dnm(a_current_hs,(n+1),m)*mu_t_2 +
+      bdt*( ((dnm(a_next,(n+1)-1,m+1)-dnm(a_next,(n+1)-1,m-1))) - dnm(a_next,(n+1)+1,m+1) + dnm(a_next,(n+1)+1,m-1) );
+
+    ffloat h3 = dnm(b_current_hs,(n+2),m)*nu_tilde+dnm(a_current_hs,(n+2),m)*mu_t_3 +
+      bdt*( ((dnm(a_next,(n+2)-1,m+1)-dnm(a_next,(n+2)-1,m-1))) - dnm(a_next,(n+2)+1,m+1) + dnm(a_next,(n+2)+1,m-1) );
+
+    ffloat h4 = dnm(b_current_hs,(n+3),m)*nu_tilde+dnm(a_current_hs,(n+3),m)*mu_t_3 +
+      bdt*( ((dnm(a_next,(n+3)-1,m+1)-dnm(a_next,(n+3)-1,m-1))) - dnm(a_next,(n+3)+1,m+1) + dnm(a_next,(n+3)+1,m-1) );
+
+    xi = nu2 + mu_t_plus_1*mu_t_plus_1;
+    dnm(a_next_hs,n,m) = (g*nu - h*mu_t_plus_1)/xi;
+    dnm(b_next_hs,n,m) = (g*mu_t_plus_1 + h*nu)/xi;
+
+    //int (n+1) = n + 1;
+    //if( (n+1) >= N ) { break; }
+    ffloat xi2 = nu2 + mu_t_plus_1_2*mu_t_plus_1_2;
+    dnm(a_next_hs,(n+1),m) = (g2*nu - h2*mu_t_plus_1_2)/xi2;
+    dnm(b_next_hs,(n+1),m) = (g2*mu_t_plus_1_2 + h2*nu)/xi2;
+
+    ffloat xi3 = nu2 + mu_t_plus_1_3*mu_t_plus_1_3;
+    dnm(a_next_hs,(n+2),m) = (g3*nu - h3*mu_t_plus_1_3)/xi3;
+    dnm(b_next_hs,(n+2),m) = (g3*mu_t_plus_1_3 + h3*nu)/xi3;
+
+    ffloat xi4 = nu2 + mu_t_plus_1_4*mu_t_plus_1_4;
+    dnm(a_next_hs,(n+3),m) = (g4*nu - h4*mu_t_plus_1_4)/xi4;
+    dnm(b_next_hs,(n+3),m) = (g4*mu_t_plus_1_4 + h4*nu)/xi4;
+  }
+} // end of _step_on_half_grid_k3_unroll_4_type_1(...)
+/** END OF 341 KERNELS **/
+
+/** BEGINING OF 342 KERNELS **/
+/**
+ * One thread per m-number. Unrolled 4 times. Removed divergent flows by taking calculations 
+ * at n=0 and n=1 out of the loops. Elements partially reused. Kernel 342.
+ */
+__global__ void _step_on_grid_k3_unroll_4_type_2
+    (ffloat *a0, ffloat *a_current,    ffloat *b_current,
+     ffloat *a_next,       ffloat *b_next,
+     ffloat *a_current_hs, ffloat *b_current_hs,
+     ffloat t, ffloat t_hs,
+     ffloat cos_omega_t, ffloat cos_omega_t_plus_dt)
+{
+  const int m = threadIdx.x+blockDim.x*blockIdx.x;
+  if( m==0 || m > TMSIZE ) { return; }
+
+  // step from (t,t+1/2) to (t+1)
+  ffloat mu_t_part = (E_dc + E_omega*cos_omega_t+B*dev_phi_y(m))*dt/2;
+  ffloat mu_t_plus_1_part = (E_dc + E_omega*cos_omega_t_plus_dt+B*dev_phi_y(m))*dt/2;
+
+  ffloat mu_t = 0;
+  ffloat mu_t_plus_1 = 0;
+  ffloat g = dt*dnm(a0,0,m)+dnm(a_current,0,m)*nu_tilde-dnm(b_current,0,m)*mu_t +
+    bdt*( dnm(b_current_hs,1,m+1) - dnm(b_current_hs,1,m-1) );
+  ffloat h = dnm(b_current,0,m)*nu_tilde+dnm(a_current,0,m)*mu_t +
+    bdt*( - dnm(a_current_hs,1,m+1) + dnm(a_current_hs,1,m-1) );
+  
+  ffloat xi = nu2 + mu_t_plus_1*mu_t_plus_1;
+  dnm(a_next,0,m) = (g*nu - h*mu_t_plus_1)/xi;
+
+  mu_t = mu_t_part;
+  mu_t_plus_1 = mu_t_plus_1_part;
+  g = dt*dnm(a0,1,m)+dnm(a_current,1,m)*nu_tilde-dnm(b_current,1,m)*mu_t +
+    bdt*( dnm(b_current_hs,2,m+1) - dnm(b_current_hs,2,m-1) );
+  h = dnm(b_current,1,m)*nu_tilde+dnm(a_current,1,m)*mu_t +
+    bdt*( 2*((dnm(a_current_hs,0,m+1)-dnm(a_current_hs,0,m-1))) - dnm(a_current_hs,2,m+1) + dnm(a_current_hs,2,m-1) );
+  
+  xi = nu2 + mu_t_plus_1*mu_t_plus_1;
+  dnm(a_next,1,m) = (g*nu - h*mu_t_plus_1)/xi;
+  dnm(b_next,1,m) = (g*mu_t_plus_1 + h*nu)/xi;
+
+  for( int n = 2; n < (N-4); n += 4 ) {
+    mu_t = n*mu_t_part;
+    ffloat mu_t_2 = mu_t + mu_t_part;
+    ffloat mu_t_3 = mu_t_2 + mu_t_part;
+    ffloat mu_t_4 = mu_t_3 + mu_t_part;
+
+    mu_t_plus_1 = n*mu_t_plus_1_part;
+    ffloat mu_t_plus_1_2 = mu_t_plus_1 + mu_t_plus_1_part;
+    ffloat mu_t_plus_1_3 = mu_t_plus_1_2 + mu_t_plus_1_part;
+    ffloat mu_t_plus_1_4 = mu_t_plus_1_3 + mu_t_plus_1_part;
+
+    ffloat b_current_hs_n_plus_1_m_plus_1  = dnm(b_current_hs,n+1,m+1);
+    ffloat b_current_hs_n_plus_1_m_minus_1 = dnm(b_current_hs,n+1,m-1);
+    g = dt*dnm(a0,n,m)+dnm(a_current,n,m)*nu_tilde-dnm(b_current,n,m)*mu_t +
+      bdt*( b_current_hs_n_plus_1_m_plus_1 - b_current_hs_n_plus_1_m_minus_1 - ((dnm(b_current_hs,n-1,m+1) - dnm(b_current_hs,n-1,m-1))) );
+
+    ffloat g2 = dt*dnm(a0,(n+1),m)+dnm(a_current,(n+1),m)*nu_tilde-dnm(b_current,(n+1),m)*mu_t_2 +
+      bdt*( dnm(b_current_hs,n+2,m+1) - dnm(b_current_hs,n+2,m-1) - ((dnm(b_current_hs,n,m+1) - dnm(b_current_hs,n,m-1))) );
+
+    ffloat g3 = dt*dnm(a0,(n+2),m)+dnm(a_current,(n+2),m)*nu_tilde-dnm(b_current,(n+2),m)*mu_t_3 +
+      bdt*( dnm(b_current_hs,(n+3),m+1) - dnm(b_current_hs,(n+3),m-1) - (( b_current_hs_n_plus_1_m_plus_1 - b_current_hs_n_plus_1_m_minus_1) ) );
+
+    ffloat g4 = dt*dnm(a0,(n+3),m)+dnm(a_current,(n+3),m)*nu_tilde-dnm(b_current,(n+3),m)*mu_t_4 +
+      bdt*( dnm(b_current_hs,(n+4),m+1) - dnm(b_current_hs,(n+4),m-1) - ((dnm(b_current_hs,(n+2),m+1) - dnm(b_current_hs,(n+2),m-1))) );
+
+    ffloat a_current_hs_n_plus_1_m_plus_1 = dnm(a_current_hs,n+1,m+1);
+    h = dnm(b_current,n,m)*nu_tilde+dnm(a_current,n,m)*mu_t +
+      bdt*( ((dnm(a_current_hs,n-1,m+1)-dnm(a_current_hs,n-1,m-1))) - a_current_hs_n_plus_1_m_plus_1 + dnm(a_current_hs,n+1,m-1) );
+
+    ffloat h2 = dnm(b_current,(n+1),m)*nu_tilde+dnm(a_current,(n+1),m)*mu_t_2 +
+      bdt*( ((dnm(a_current_hs,n,m+1)-dnm(a_current_hs,n,m-1))) - dnm(a_current_hs,(n+2),m+1) + dnm(a_current_hs,(n+2),m-1) );
+
+    ffloat h3 = dnm(b_current,(n+2),m)*nu_tilde+dnm(a_current,(n+2),m)*mu_t_3 +
+      bdt*( (( a_current_hs_n_plus_1_m_plus_1-dnm(a_current_hs,(n+1),m-1))) - dnm(a_current_hs,(n+3),m+1) + dnm(a_current_hs,(n+3),m-1) );
+
+    ffloat h4 = dnm(b_current,(n+3),m)*nu_tilde+dnm(a_current,(n+3),m)*mu_t_4 +
+      bdt*( ((dnm(a_current_hs,(n+2),m+1)-dnm(a_current_hs,(n+2),m-1))) - dnm(a_current_hs,(n+4),m+1) + dnm(a_current_hs,(n+4),m-1) );
+
+    xi = nu2 + mu_t_plus_1*mu_t_plus_1;
+    dnm(a_next,n,m) = (g*nu - h*mu_t_plus_1)/xi;
+    dnm(b_next,n,m) = (g*mu_t_plus_1 + h*nu)/xi;
+
+    //int (n+1) = n + 1;
+    //if( (n+1) >= N ) { break; }
+
+    ffloat xi2 = nu2 + mu_t_plus_1_2*mu_t_plus_1_2;
+    dnm(a_next,(n+1),m) = (g2*nu - h2*mu_t_plus_1_2)/xi2;
+    dnm(b_next,(n+1),m) = (g2*mu_t_plus_1_2 + h2*nu)/xi2;
+
+    ffloat xi3 = nu2 + mu_t_plus_1_3*mu_t_plus_1_3;
+    dnm(a_next,(n+2),m) = (g3*nu - h3*mu_t_plus_1_3)/xi3;
+    dnm(b_next,(n+2),m) = (g3*mu_t_plus_1_3 + h3*nu)/xi3;
+
+    ffloat xi4 = nu2 + mu_t_plus_1_3*mu_t_plus_1_4;
+    dnm(a_next,(n+3),m) = (g4*nu - h4*mu_t_plus_1_4)/xi4;
+    dnm(b_next,(n+3),m) = (g4*mu_t_plus_1_4 + h4*nu)/xi4;
+  }
+} // end of _step_on_grid_k3_unroll_4_type_2(...)
+
+__global__ void _step_on_half_grid_k3_unroll_4_type_2
+    (ffloat *a0, ffloat *a_current,    ffloat *b_current,
+     ffloat *a_next,       ffloat *b_next,
+     ffloat *a_current_hs, ffloat *b_current_hs,
+     ffloat *a_next_hs,    ffloat *b_next_hs,
+     ffloat t, ffloat t_hs,
+     ffloat cos_omega_t, ffloat cos_omega_t_plus_dt)
+{
+  const int m = threadIdx.x+blockDim.x*blockIdx.x;
+  if( m==0 || m > TMSIZE ) { return; }
+
+  // step from (t+1/2,t+1) to (t+3/2)
+  ffloat mu_t_part        = (E_dc + E_omega*cos_omega_t+B*dev_phi_y(m))*dt/2;
+  ffloat mu_t_plus_1_part = (E_dc + E_omega*cos_omega_t_plus_dt+B*dev_phi_y(m))*dt/2;
+
+  ffloat mu_t = 0;
+  ffloat mu_t_plus_1 = 0;
+  ffloat g = dt*dnm(a0,0,m)+dnm(a_current_hs,0,m)*nu_tilde-dnm(b_current_hs,0,m)*mu_t +
+    bdt*( dnm(b_next,1,m+1) - dnm(b_next,1,m-1) );
+  ffloat h = dnm(b_current_hs,0,m)*nu_tilde+dnm(a_current_hs,0,m)*mu_t +
+    bdt*( - dnm(a_next,1,m+1) + dnm(a_next,1,m-1) );
+  ffloat xi = nu2 + mu_t_plus_1*mu_t_plus_1;
+  dnm(a_next_hs,0,m) = (g*nu - h*mu_t_plus_1)/xi;
+
+  mu_t = mu_t_part;
+  mu_t_plus_1 = mu_t_plus_1_part;
+  g = dt*dnm(a0,1,m)+dnm(a_current_hs,1,m)*nu_tilde-dnm(b_current_hs,1,m)*mu_t +
+    bdt*( dnm(b_next,2,m+1) - dnm(b_next,2,m-1) );
+  h = dnm(b_current_hs,1,m)*nu_tilde+dnm(a_current_hs,1,m)*mu_t +
+    bdt*( 2*((dnm(a_next,0,m+1)-dnm(a_next,0,m-1))) - dnm(a_next,2,m+1) + dnm(a_next,2,m-1) );
+  xi = nu2 + mu_t_plus_1*mu_t_plus_1;
+  dnm(a_next_hs,1,m) = (g*nu - h*mu_t_plus_1)/xi;
+  dnm(b_next_hs,1,m) = (g*mu_t_plus_1 + h*nu)/xi;
+
+  for( int n = 2; n < (N-4); n += 4 ) {
+    mu_t = n*mu_t_part;
+    ffloat mu_t_2 = mu_t   + mu_t_part;
+    ffloat mu_t_3 = mu_t_2 + mu_t_part;
+    ffloat mu_t_4 = mu_t_3 + mu_t_part;
+
+    mu_t_plus_1 = n*mu_t_plus_1_part;
+    ffloat mu_t_plus_1_2 = mu_t_plus_1 + mu_t_plus_1_part;
+    ffloat mu_t_plus_1_3 = mu_t_plus_1_2 + mu_t_plus_1_part;
+    ffloat mu_t_plus_1_4 = mu_t_plus_1_3 + mu_t_plus_1_part;
+
+    g = dt*dnm(a0,n,m)+dnm(a_current_hs,n,m)*nu_tilde-dnm(b_current_hs,n,m)*mu_t +
+      bdt*( dnm(b_next,n+1,m+1) - dnm(b_next,n+1,m-1) - ((dnm(b_next,n-1,m+1) - dnm(b_next,n-1,m-1))) );
+
+    ffloat g2 = dt*dnm(a0,(n+1),m)+dnm(a_current_hs,(n+1),m)*nu_tilde-dnm(b_current_hs,(n+1),m)*mu_t_2 +
+      bdt*( dnm(b_next,(n+2),m+1) - dnm(b_next,(n+2),m-1) - ((dnm(b_next,n,m+1) - dnm(b_next,n,m-1))) );
+
+    ffloat g3 = dt*dnm(a0,(n+2),m)+dnm(a_current_hs,(n+2),m)*nu_tilde-dnm(b_current_hs,(n+2),m)*mu_t_3 +
+      bdt*( dnm(b_next,(n+3),m+1) - dnm(b_next,(n+3),m-1) - ((dnm(b_next,(n+1),m+1) - dnm(b_next,(n+1),m-1))) );
+
+    ffloat g4 = dt*dnm(a0,(n+3),m)+dnm(a_current_hs,(n+3),m)*nu_tilde-dnm(b_current_hs,(n+3),m)*mu_t_4 +
+      bdt*( dnm(b_next,(n+4),m+1) - dnm(b_next,(n+4),m-1) - ((dnm(b_next,(n+2),m+1) - dnm(b_next,(n+2),m-1))) );
+
+    h = dnm(b_current_hs,n,m)*nu_tilde+dnm(a_current_hs,n,m)*mu_t +
+      bdt*( ((dnm(a_next,n-1,m+1)-dnm(a_next,n-1,m-1))) - dnm(a_next,n+1,m+1) + dnm(a_next,n+1,m-1) );
+
+    ffloat h2 = dnm(b_current_hs,(n+1),m)*nu_tilde+dnm(a_current_hs,(n+1),m)*mu_t_2 +
+      bdt*( ((dnm(a_next,n,m+1)-dnm(a_next,n,m-1))) - dnm(a_next,(n+2),m+1) + dnm(a_next,(n+2),m-1) );
+
+    ffloat h3 = dnm(b_current_hs,(n+2),m)*nu_tilde+dnm(a_current_hs,(n+2),m)*mu_t_3 +
+      bdt*( ((dnm(a_next,(n+1),m+1)-dnm(a_next,(n+1),m-1))) - dnm(a_next,(n+3),m+1) + dnm(a_next,(n+3),m-1) );
+
+    ffloat h4 = dnm(b_current_hs,(n+3),m)*nu_tilde+dnm(a_current_hs,(n+3),m)*mu_t_3 +
+      bdt*( ((dnm(a_next,(n+2),m+1)-dnm(a_next,(n+2),m-1))) - dnm(a_next,(n+4),m+1) + dnm(a_next,(n+4),m-1) );
+
+    xi = nu2 + mu_t_plus_1*mu_t_plus_1;
+    dnm(a_next_hs,n,m) = (g*nu - h*mu_t_plus_1)/xi;
+    dnm(b_next_hs,n,m) = (g*mu_t_plus_1 + h*nu)/xi;
+
+    //int (n+1) = n + 1;
+    //if( (n+1) >= N ) { break; }
+    ffloat xi2 = nu2 + mu_t_plus_1_2*mu_t_plus_1_2;
+    dnm(a_next_hs,(n+1),m) = (g2*nu - h2*mu_t_plus_1_2)/xi2;
+    dnm(b_next_hs,(n+1),m) = (g2*mu_t_plus_1_2 + h2*nu)/xi2;
+
+    ffloat xi3 = nu2 + mu_t_plus_1_3*mu_t_plus_1_3;
+    dnm(a_next_hs,(n+2),m) = (g3*nu - h3*mu_t_plus_1_3)/xi3;
+    dnm(b_next_hs,(n+2),m) = (g3*mu_t_plus_1_3 + h3*nu)/xi3;
+
+    ffloat xi4 = nu2 + mu_t_plus_1_4*mu_t_plus_1_4;
+    dnm(a_next_hs,(n+3),m) = (g4*nu - h4*mu_t_plus_1_4)/xi4;
+    dnm(b_next_hs,(n+3),m) = (g4*mu_t_plus_1_4 + h4*nu)/xi4;
+  }
+} // end of _step_on_half_grid_k3_unroll_4_type_2(...)
+/** END OF 342 KERNELS **/
 
 __global__ void av_gpu_parallel(ffloat *a, ffloat *b, ffloat *av_data, ffloat t) {
   //threadIdx.x;
@@ -802,36 +1172,46 @@ void step_on_grid(int blocks, ffloat *a0, ffloat *a_current,    ffloat *b_curren
                   ffloat *a_current_hs, ffloat *b_current_hs,
                   ffloat t, ffloat t_hs, ffloat cos_omega_t, ffloat cos_omega_t_plus_dt)
 {
+
 #if BLTZM_KERNEL == 1
-  _step_on_grid_k1<<<blocks,TH_PER_BLOCK>>>(a0, a_current, b_current, a_next, b_next,
+  _step_on_grid_k1<<<dimGrid, dimBlock>>>(a0, a_current, b_current, a_next, b_next,
                                          a_current_hs, b_current_hs,
                                          t, t_hs, cos_omega_t, cos_omega_t_plus_dt);
+
 #elif BLTZM_KERNEL == 2
-  _step_on_grid_k2<<<blocks,TH_PER_BLOCK>>>(a0, a_current, b_current, a_next, b_next,
-                                         a_current_hs, b_current_hs,
-                                         t, t_hs, cos_omega_t, cos_omega_t_plus_dt);
-#elif BLTZM_KERNEL == 3
-  _step_on_grid_k3<<<blocks,TH_PER_BLOCK>>>(a0, a_current, b_current, a_next, b_next,
-                                         a_current_hs, b_current_hs,
-                                         t, t_hs, cos_omega_t, cos_omega_t_plus_dt);
+  _step_on_grid_k2<<<dimGrid, dimBlock>>>(a0, a_current, b_current, a_next, b_next,
+					  a_current_hs, b_current_hs,
+					  t, t_hs, cos_omega_t, cos_omega_t_plus_dt);
+
+#elif BLTZM_KERNEL == 310
+  _step_on_grid_k3_unroll_1_type_0<<<blocks,TH_PER_BLOCK>>>(a0, a_current, b_current, a_next, b_next,
+							    a_current_hs, b_current_hs,
+							    t, t_hs, cos_omega_t, cos_omega_t_plus_dt);
+
+#elif BLTZM_KERNEL == 311
+  _step_on_grid_k3_unroll_1_type_1<<<blocks,TH_PER_BLOCK>>>(a0, a_current, b_current, a_next, b_next,
+							    a_current_hs, b_current_hs,
+							    t, t_hs, cos_omega_t, cos_omega_t_plus_dt);
+
+#elif BLTZM_KERNEL == 321
+  _step_on_grid_k3_unroll_2_type_1<<<blocks,TH_PER_BLOCK>>>(a0, a_current, b_current, a_next, b_next,
+							    a_current_hs, b_current_hs,
+							    t, t_hs, cos_omega_t, cos_omega_t_plus_dt);
+
+#elif BLTZM_KERNEL == 341
+  _step_on_grid_k3_unroll_4_type_1<<<blocks,TH_PER_BLOCK>>>(a0, a_current, b_current, a_next, b_next,
+							    a_current_hs, b_current_hs,
+							    t, t_hs, cos_omega_t, cos_omega_t_plus_dt);
+
+#elif BLTZM_KERNEL == 342
+  _step_on_grid_k3_unroll_4_type_2<<<blocks,TH_PER_BLOCK>>>(a0, a_current, b_current, a_next, b_next,
+							    a_current_hs, b_current_hs,
+							    t, t_hs, cos_omega_t, cos_omega_t_plus_dt);
+
 #elif BLTZM_KERNEL == 4
   _step_on_grid_k4<<<blocks,TH_PER_BLOCK>>>(a0, a_current, b_current, a_next, b_next,
-                                         a_current_hs, b_current_hs,
-                                         t, t_hs, cos_omega_t, cos_omega_t_plus_dt);
-#elif BLTZM_KERNEL == 5
-  _step_on_grid_k5<<<dimGrid, dimBlock>>>(a0, a_current, b_current, a_next, b_next,
-                                         a_current_hs, b_current_hs,
-                                         t, t_hs, cos_omega_t, cos_omega_t_plus_dt);
-
-#elif BLTZM_KERNEL == 6
-  _step_on_grid_k6<<<dimGrid, dimBlock>>>(a0, a_current, b_current, a_next, b_next,
-                                         a_current_hs, b_current_hs,
-                                         t, t_hs, cos_omega_t, cos_omega_t_plus_dt);
-
-#else 
-  _step_on_grid<<<blocks,TH_PER_BLOCK>>>(a0, a_current, b_current, a_next, b_next,
-                                         a_current_hs, b_current_hs,
-                                         t, t_hs, cos_omega_t, cos_omega_t_plus_dt);
+					    a_current_hs, b_current_hs,
+					    t, t_hs, cos_omega_t, cos_omega_t_plus_dt);
 #endif
 }
 
@@ -842,68 +1222,50 @@ void step_on_half_grid(int blocks, ffloat *a0, ffloat *a_current,    ffloat *b_c
                        ffloat *a_next_hs, ffloat *b_next_hs,
                        ffloat t, ffloat t_hs, ffloat cos_omega_t, ffloat cos_omega_t_plus_dt)
 {
-#if BLTZM_KERNEL == 1
-  _step_on_half_grid_k1<<<blocks,TH_PER_BLOCK>>>(a0, a_current, b_current, a_next, b_next,
-                                              a_current_hs, b_current_hs, a_next_hs, b_next_hs,
-                                              t, t_hs, cos_omega_t, cos_omega_t_plus_dt);
+#if BLTZM_KERNEL   == 1
+  _step_on_half_grid_k1<<<dimGrid, dimBlock>>>(a0, a_current, b_current, a_next, b_next,
+					       a_current_hs, b_current_hs, a_next_hs, b_next_hs,
+					       t, t_hs, cos_omega_t, cos_omega_t_plus_dt);
+
 #elif BLTZM_KERNEL == 2
-  _step_on_half_grid_k2<<<blocks,TH_PER_BLOCK>>>(a0, a_current, b_current, a_next, b_next,
-                                              a_current_hs, b_current_hs, a_next_hs, b_next_hs,
-                                              t, t_hs, cos_omega_t, cos_omega_t_plus_dt);
-#elif BLTZM_KERNEL == 3
-  _step_on_half_grid_k3<<<blocks,TH_PER_BLOCK>>>(a0, a_current, b_current, a_next, b_next,
-                                              a_current_hs, b_current_hs, a_next_hs, b_next_hs,
-                                              t, t_hs, cos_omega_t, cos_omega_t_plus_dt);
+  _step_on_half_grid_k2<<<dimGrid, dimBlock>>>(a0, a_current, b_current, a_next, b_next,
+					       a_current_hs, b_current_hs, a_next_hs, b_next_hs,
+					       t, t_hs, cos_omega_t, cos_omega_t_plus_dt);
+
+#elif BLTZM_KERNEL == 310
+  _step_on_half_grid_k3_unroll_1_type_0<<<blocks,TH_PER_BLOCK>>>(a0, a_current, b_current, a_next, b_next,
+								 a_current_hs, b_current_hs, a_next_hs, b_next_hs,
+								 t, t_hs, cos_omega_t, cos_omega_t_plus_dt);
+
+#elif BLTZM_KERNEL == 311
+  _step_on_half_grid_k3_unroll_1_type_1<<<blocks,TH_PER_BLOCK>>>(a0, a_current, b_current, a_next, b_next,
+								 a_current_hs, b_current_hs, a_next_hs, b_next_hs,
+								 t, t_hs, cos_omega_t, cos_omega_t_plus_dt);
+
+#elif BLTZM_KERNEL == 321
+  _step_on_half_grid_k3_unroll_2_type_1<<<blocks,TH_PER_BLOCK>>>(a0, a_current, b_current, a_next, b_next,
+								 a_current_hs, b_current_hs, a_next_hs, b_next_hs,
+								 t, t_hs, cos_omega_t, cos_omega_t_plus_dt);
+
+#elif BLTZM_KERNEL == 341
+  _step_on_half_grid_k3_unroll_4_type_1<<<blocks,TH_PER_BLOCK>>>(a0, a_current, b_current, a_next, b_next,
+								 a_current_hs, b_current_hs, a_next_hs, b_next_hs,
+								 t, t_hs, cos_omega_t, cos_omega_t_plus_dt);
+
+#elif BLTZM_KERNEL == 342
+  _step_on_half_grid_k3_unroll_4_type_2<<<blocks,TH_PER_BLOCK>>>(a0, a_current, b_current, a_next, b_next,
+								 a_current_hs, b_current_hs, a_next_hs, b_next_hs,
+								 t, t_hs, cos_omega_t, cos_omega_t_plus_dt);
+
 #elif BLTZM_KERNEL == 4
   _step_on_half_grid_k4<<<blocks,TH_PER_BLOCK>>>(a0, a_current, b_current, a_next, b_next,
-                                              a_current_hs, b_current_hs, a_next_hs, b_next_hs,
-                                              t, t_hs, cos_omega_t, cos_omega_t_plus_dt);
-#elif BLTZM_KERNEL == 5
-
-  //printf("dimBlock(%d,%d)\n", dimBlock.x, dimBlock.y);
-  //printf("dimGrid(%d,%d)\n", dimGrid.x, dimGrid.y);
-  //printf("%d, %d, %d\n", MP1, BLOCK_SIZE, ((MP1+BLOCK_SIZE)/BLOCK_SIZE));
-  _step_on_half_grid_k5<<<dimGrid, dimBlock>>>(a0, a_current, b_current, a_next, b_next,
 						 a_current_hs, b_current_hs, a_next_hs, b_next_hs,
 						 t, t_hs, cos_omega_t, cos_omega_t_plus_dt);
-
-#elif BLTZM_KERNEL == 6
-  _step_on_half_grid_k6<<<dimGrid, dimBlock>>>(a0, a_current, b_current, a_next, b_next,
-						 a_current_hs, b_current_hs, a_next_hs, b_next_hs,
-						 t, t_hs, cos_omega_t, cos_omega_t_plus_dt);
-
-#else
-  _step_on_half_grid<<<blocks,TH_PER_BLOCK>>>(a0, a_current, b_current, a_next, b_next,
-                                              a_current_hs, b_current_hs, a_next_hs, b_next_hs,
-                                              t, t_hs, cos_omega_t, cos_omega_t_plus_dt);
 #endif
-}
-
-extern "C"
-void step_on_grid_nr(int blocks, ffloat *a0, ffloat *a_current,    ffloat *b_current,
-                  ffloat *a_next,       ffloat *b_next,
-                  ffloat *a_current_hs, ffloat *b_current_hs,
-                  ffloat t, ffloat t_hs, ffloat cos_omega_t, ffloat cos_omega_t_plus_dt)
-{
-  _step_on_grid_nr<<<blocks,TH_PER_BLOCK>>>(a0, a_current, b_current, a_next, b_next,
-                                         a_current_hs, b_current_hs,
-                                         t, t_hs, cos_omega_t, cos_omega_t_plus_dt);
-}
-
-extern "C"
-void step_on_half_grid_nr(int blocks, ffloat *a0, ffloat *a_current,    ffloat *b_current,
-                       ffloat *a_next,       ffloat *b_next,
-                       ffloat *a_current_hs, ffloat *b_current_hs,
-                       ffloat *a_next_hs, ffloat *b_next_hs,
-                       ffloat t, ffloat t_hs, ffloat cos_omega_t, ffloat cos_omega_t_plus_dt)
-{
-  _step_on_half_grid_nr<<<blocks,TH_PER_BLOCK>>>(a0, a_current, b_current, a_next, b_next,
-                                              a_current_hs, b_current_hs, a_next_hs, b_next_hs,
-                                              t, t_hs, cos_omega_t, cos_omega_t_plus_dt);
 }
 
 extern "C"
 void av(int blocks, ffloat *a, ffloat *b, ffloat *av_data, ffloat t) {
   av_gpu_parallel<<<1,PPP>>>(a, b, av_data, t);
-  //av_gpu<<<1,1>>>(a, b, av_data, t);
+  /** av_gpu<<<1,1>>>(a, b, av_data, t); **/ // sequential reduction averaging. very slow.
 }
